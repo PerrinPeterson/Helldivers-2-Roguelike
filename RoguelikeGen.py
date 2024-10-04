@@ -168,254 +168,6 @@ def main():
         except:
             strategemImages.append(None)
 
-
-    catagories = [1, 1, 1, 1] #Chance of getting a primary, secondary, grenade, or strategem
-
-    # Generate a build
-    for i in range(len(Build)):
-        if i == 0:
-            selection = random.choices(range(len(PRIMARIES)), primaries)[0]
-            #reduce the chance of getting the same primary again, and increase the chance of getting the other ones
-            primaries[selection] /= 1.5
-            for j in range(len(primaries)):
-                if j != selection:
-                    primaries[j] *= 1.01
-                    if primaries[j] > 10:
-                        primaries[j] = 10
-            Build[i] = PRIMARIES[selection]
-        elif i == 1:
-            selection = random.choices(range(len(SECONDARIES)), secondaries)[0]
-            #reduce the chance of getting the same secondary again, and increase the chance of getting the other ones
-            secondaries[selection] /= 1.5
-            for j in range(len(secondaries)):
-                if j != selection:
-                    secondaries[j] *= 1.1
-                    if secondaries[j] > 10:
-                        secondaries[j] = 10
-            Build[i] = SECONDARIES[selection]
-        elif i == 2:
-            selection = random.choices(range(len(GRENADES)), grenades)[0]
-            #reduce the chance of getting the same grenade again, and increase the chance of getting the other ones
-            grenades[selection] /= 1.5
-            for j in range(len(grenades)):
-                if j != selection:
-                    grenades[j] *= 1.01
-                    if grenades[j] > 10:
-                        grenades[j] = 10
-            Build[i] = GRENADES[selection]
-        else:
-            selection = random.choices(range(len(STRATEGEMS)), strategems)[0]
-            currentBuild = Build[3:i]
-            while STRATEGEMS[selection] in currentBuild:
-                #if the strategem is already in the build, try again
-                selection = random.choices(range(len(STRATEGEMS)), strategems)[0]
-            #reduce the chance of getting the same strategem again, and increase the chance of getting the other ones
-            strategems[selection] /= 1.5
-            for j in range(len(strategems)):
-                if j != selection:
-                    strategems[j] *= 1.01
-                    if strategems[j] > 10:
-                        strategems[j] = 10
-            Build[i] = STRATEGEMS[selection]
-
-    def GetSelection():
-        while True:
-            userInput = str(input("Select an option: "))
-            if userInput == "1" or userInput == "2" or userInput == "3" or userInput == "4" or userInput == "5":
-                if userInput == "5":
-                    os.system("cls")
-                    print("ARE YOU SURE!\nLocking in the loadout means you now are locked in until you get to div 10, or fail a mission. No more gear rolls for you!")
-                    print("1: Yes, Lock in the Loadout")
-                    print("2: No, I want to roll again")
-                    userInput = str(input("Select an option: "))
-                    if userInput == "1":
-                        return 5
-                    elif userInput == "2":
-                        return 0
-                elif userInput == "4":
-                    return 4
-                elif userInput == "3":
-                    return 3
-                elif userInput == "2":
-                    return 2
-                elif userInput == "1":
-                    return 1
-            else:
-                print("Invalid input")
-            
-    def RollGear(numRolls):
-        #Roll 3 categories
-            categoryChances = [1.3, 1.3, 1.3, 4] #Chance of getting a primary, secondary, grenade, or strategem. Strategems are weighted higher because theres 4 of them
-            categorySelections = []
-            for i in range(3):
-                categorySelections.append(random.choices(range(4), categoryChances)[0])
-                #If the category is a primary, secondary, or grenade, we can't have more than one of each
-                if categorySelections[i] < 3:
-                    while categorySelections[i] in categorySelections[:i]:
-                        categorySelections[i] = random.choices(range(4), catagories)[0]
-            #Roll the selections, store them in a list so the player can choose which one they want, or if they want all 3
-            selections = []
-            for i in range(3):
-                if categorySelections[i] == 0:
-                    selection = random.choices(range(len(PRIMARIES)), primaries)[0]
-                    #ensure the selection isn't already in the build
-                    while PRIMARIES[selection] in Build:
-                        selection = random.choices(range(len(PRIMARIES)), primaries)[0]
-                    selections.append(PRIMARIES[selection])
-                    #reduce the chance of getting the same primary again, and increase the chance of getting the other ones
-                    primaries[selection] /= 1.5
-                    for j in range(len(primaries)):
-                        if j != selection:
-                            primaries[j] *= 1.01
-                            if primaries[j] > 10:
-                                primaries[j] = 10
-                elif categorySelections[i] == 1:
-                    selection = random.choices(range(len(SECONDARIES)), secondaries)[0]
-                    #ensure the selection isn't already in the build
-                    while SECONDARIES[selection] in Build:
-                        selection = random.choices(range(len(SECONDARIES)), secondaries)[0]
-                    selections.append(SECONDARIES[selection])
-                    #reduce the chance of getting the same secondary again, and increase the chance of getting the other ones
-                    secondaries[selection] /= 1.5
-                    for j in range(len(secondaries)):
-                        if j != selection:
-                            secondaries[j] *= 1.01
-                            if secondaries[j] > 10:
-                                secondaries[j] = 10
-                elif categorySelections[i] == 2:
-                    selection = random.choices(range(len(GRENADES)), grenades)[0]
-                    #ensure the selection isn't already in the build
-                    while GRENADES[selection] in Build:
-                        selection = random.choices(range(len(GRENADES)), grenades)[0]
-                    selections.append(GRENADES[selection])
-                    #reduce the chance of getting the same grenade again, and increase the chance of getting the other ones
-                    grenades[selection] /= 1.5
-                    for j in range(len(grenades)):
-                        if j != selection:
-                            grenades[j] *= 1.01
-                            if grenades[j] > 10:
-                                grenades[j] = 10
-                else:
-                    selection = random.choices(range(len(STRATEGEMS)), strategems)[0]
-                    #ensure the selection isn't already in the build
-                    while STRATEGEMS[selection] in Build:
-                        selection = random.choices(range(len(STRATEGEMS)), strategems)[0]
-                    selections.append(STRATEGEMS[selection])
-                    #reduce the chance of getting the same strategem again, and increase the chance of getting the other ones
-                    strategems[selection] /= 1.5
-                    for j in range(len(strategems)):
-                        if j != selection:
-                            strategems[j] *= 1.01
-                            if strategems[j] > 10:
-                                strategems[j] = 10
-            #For each Stratagem, select a random slot to replace. The entry in the list is the index of the selection
-            strategemSlots = [0, 0, 0, 0]
-            #find out how many strategems where selected
-            strategemCount = 0
-            for i in range(3):
-                if categorySelections[i] == 3:
-                    strategemCount += 1
-            #roll a random slot for each strategem
-            for i in range(strategemCount):
-                slot = random.randint(0, 3)
-                #ensure the slot isn't already taken
-                while strategemSlots[slot] != 0:
-                    slot = random.randint(0, 3)
-                #find the index in the selections list of the strategem to put in the slot
-                selectionIndex = 0
-                skips = i
-                for j in range(len(selections)):
-                    if selections[j] in STRATEGEMS:
-                        if skips == 0:
-                            selectionIndex = j
-                            break
-                        skips -= 1
-                #put the selection in the slot
-                strategemSlots[slot] = selectionIndex + 1 #So its not 0 indexed
-
-
-            #Show the selections to the player, and let them choose which ones they want
-            print("\nNew Loadout Options:")
-            if numRolls == MaxRolls:
-                print("You have reached the maximum number of rolls. You must lock in your current loadout.")
-                print("LOCKED IN, Good luck!")
-                #print the current loadout
-                for i in range(len(Build)):
-                    print(Build[i])
-                return
-            for i in range(len(selections)):
-                if i + 1 in strategemSlots: #The index is in the strategems
-                    print(str(i+1) + ":" + Build[strategemSlots.index(i+1) + 3] + "\t<=====\t" + selections[i])
-                else:
-                    print(str(i+1) + ":" + Build[categorySelections[i]] + "\t<=====\t" + selections[i])
-            print("4: All of the above")
-            print("5: Lock In Current Loadout")
-
-            #Get the players selection
-            selection = GetSelection()
-
-            while selection == 0:
-                print("New Loadout Options:")
-                for i in range(len(selections)):
-                    if i + 1 in strategemSlots: #The index is in the strategems
-                        print(str(i+1) + ": " + selections[i] + " (Strategem Slot " + Build[strategemSlots.index(i+1) + 3] + ")")
-                    else:
-                        print(str(i+1) + ": " + selections[i])
-                print("4: All of the above")
-                print("5: Lock In Current Loadout")
-                selection = GetSelection()
-
-            if selection == 5:
-                print("LOCKED IN, Good luck!")
-                #print the current loadout
-                for i in range(len(Build)):
-                    print(Build[i])
-                return
-            elif selection == 1:
-                if selections[0] in PRIMARIES:
-                    Build[0] = selections[0]
-                elif selections[0] in SECONDARIES:
-                    Build[1] = selections[0]
-                elif selections[0] in GRENADES:
-                    Build[2] = selections[0]
-                else:
-                    Build[3 + strategemSlots.index(1)] = selections[0]
-            elif selection == 2:
-                if selections[1] in PRIMARIES:
-                    Build[0] = selections[1]
-                elif selections[1] in SECONDARIES:
-                    Build[1] = selections[1]
-                elif selections[1] in GRENADES:
-                    Build[2] = selections[1]
-                else:
-                    Build[3 + strategemSlots.index(2)] = selections[1]
-
-            elif selection == 3:
-                if selections[2] in PRIMARIES:
-                    Build[0] = selections[2]
-                elif selections[2] in SECONDARIES:
-                    Build[1] = selections[2]
-                elif selections[2] in GRENADES:
-                    Build[2] = selections[2]
-                else:
-                    Build[3 + strategemSlots.index(3)] = selections[2]
-
-
-            elif selection == 4:
-                for i in range(len(selections)):
-                    if selections[i] in PRIMARIES:
-                        Build[0] = selections[i]
-                    elif selections[i] in SECONDARIES:
-                        Build[1] = selections[i]
-                    elif selections[i] in GRENADES:
-                        Build[2] = selections[i]
-                    else:
-                        Build[3+ strategemSlots.index(i+1)] = selections[i]
-            
-            else:
-                Build[selection-1] = selections[selection-1]
-            #print the current loadout
-
     class Button:
         #To use the function args, you must pass a list of the arguments you want to pass to the function
         def __init__(self, image, pos, function = None, functions = [], FunctionArgs = [], heldFunctions = [], heldFunctionArgs = [], heldTimeLimit = 1):
@@ -1015,7 +767,6 @@ def main():
 
     class gameTextImage():
         def __init__(self, text, pos, font, width = 0, height = 0):
-            minHeight = 10
             self.text = text
             self.font = font
             self.image = self.font.render(self.text, True, (255, 255, 255))
@@ -1086,7 +837,7 @@ def main():
         def show(self):
             self.hidden = False
 
-    class gameImage():
+    
         def __init__(self, pos, image = None):
             self.image = image
             if self.image != None:
@@ -1161,7 +912,6 @@ def main():
         
         def getHeight(self):
             return self.rect.height
-
     
     class Game:
         def __init__(self):
@@ -1506,36 +1256,6 @@ def main():
     pg.font.init()
     game = Game()
     game.loadGame()
-
-    # running = True
-    # while running:
-    #     MaxRolls = 15
-    #     numRolls = 0
-    #     os.system("cls")
-    #     print("Current Loadout:")
-    #     for i in range(len(Build)):
-    #         print(Build[i])
-    #     userInput = GetInput()
-    #     if userInput == 1:
-    #         running = False
-    #         return
-    #     elif userInput == 0:
-    #         RollGear(numRolls)
-    #         numRolls += 1
-    #         os.system("cls")
-
-            
-                
-            
-
-
-
-                
-                
-            
-
-
-
 
 
 if __name__ == "__main__":
