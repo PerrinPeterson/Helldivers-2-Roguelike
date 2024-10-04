@@ -134,7 +134,7 @@ ENDGAME = pg.USEREVENT + 2
 
 def main():
     # Generate chance lists, so that we can weight the random selection to favor items that aren't being selected as often
-    imageBasePath = "HD2 Icons/"
+    imageBasePath = "HD2RoguelikeGen/HD2 Icons/"
     primaries = []
     primaryImages = []
     for i in range(len(PRIMARIES)):
@@ -836,82 +836,6 @@ def main():
 
         def show(self):
             self.hidden = False
-
-    
-        def __init__(self, pos, image = None):
-            self.image = image
-            if self.image != None:
-                self.image = pg.image.load(self.image)
-                self.rect = self.image.get_rect()
-                self.rect.topleft = pos
-            else:
-                self.rect = pg.Rect(pos, (100, 100))
-
-            self.hidden = False
-            self.destroyed = False
-
-        def handleInput(self, event):
-            pass
-
-        def destroy(self):
-            self.destroyed = True
-
-        def draw(self, screen):
-            if not self.hidden:
-                if self.image == None:
-                    pg.draw.rect(screen, (255, 255, 255), self.rect)
-                else:
-                    screen.blit(self.image, self.rect)
-
-        def update(self):
-            pass
-
-        def positionByTopMiddle(self, pos):
-            self.rect.top = pos[1]
-            self.rect.centerx = pos[0]
-
-        def getTopMiddle(self):
-            return (self.rect.centerx, self.rect.top)
-        
-        def positionByBottomMiddle(self, pos):
-            self.rect.bottom = pos[1]
-            self.rect.centerx = pos[0]
-
-        def getBottomMiddle(self):
-            return (self.rect.centerx, self.rect.bottom)
-        
-        def positionByCenter(self, pos):
-            self.rect.center = pos
-
-        def getCenter(self):
-            return self.rect.center
-        
-        def handleInput(self, event):
-            pass
-
-        def hide(self):
-            self.hidden = True
-
-        def show(self):
-            self.hidden = False
-
-        def setImg(self, image):
-            previousCenter = self.getCenter()
-
-            if image != None:
-                self.image = pg.image.load(image)
-                self.rect = self.image.get_rect()
-                self.rect.topleft = (0, 0)
-                self.positionByCenter(previousCenter)
-            else:
-                self.rect = pg.Rect((0, 0), (100, 100))
-                self.positionByCenter(previousCenter)
-
-        def getWidth(self):
-            return self.rect.width
-        
-        def getHeight(self):
-            return self.rect.height
     
     class Game:
         def __init__(self):
