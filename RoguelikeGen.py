@@ -1,6 +1,9 @@
 import pygame as pg
 import random
 import os
+import math
+import copy
+import numpy as np
 
 # GEAR LISTS
 PRIMARIES = [
@@ -37,12 +40,12 @@ SECONDARIES = [
     "Crisper",
     "Dagger",
     "Peacemaker",
-    "Redeamer", 
+    "Redeemer", 
     "Grenade Pistol", 
     "Verdict",
     "Senator", 
-    "P11 Stim Pistol", 
-    "BushWaker",
+    "Stim Pistol", 
+    "Bushwhacker",
     ]
 
 GRENADES = [
@@ -174,6 +177,7 @@ def main():
             self.image = image
             if self.image != None:
                 self.image = pg.image.load(self.image)
+                self.BASEIMAGE = self.image
                 self.rect = self.image.get_rect()
                 self.rect.topleft = pos
             else:
@@ -202,34 +206,129 @@ def main():
             for i in range(len(heldFunctionArgs)):
                 self.heldFunctionArgs.append(heldFunctionArgs[i])
 
+            self.rotation = 0
+            self.StoredRotation = 0
+            self.scale = 1
+            self.children = []
+            self.toDestroy = []
+
 
         def destroy(self):
+            failedToDestroy = False
+            for child in self.children:
+                if not child.destroy():
+                    failedToDestroy = True
+                    self.toDestroy.append(child)
+                self.children.remove(child)
+            for child in self.toDestroy:
+                if not child.destroy():
+                    failedToDestroy = True
+                else:
+                    self.toDestroy.remove(child)
+            if failedToDestroy:
+                self.destroyed = True
+                return False
             self.destroyed = True
+            return True
 
         def setImage(self, image):
             oldCenter = self.rect.center
             if image != None:
                 self.image = image
+                self.BASEIMAGE = image
                 self.rect = self.image.get_rect()
                 self.rect.center = oldCenter
+
+        def addChild(self, child):
+            child.parent = self
+            self.children.append(child)
             
 
 
 
         def draw(self, screen):
-            if not self.hidden:
+            if not self.hidden and not self.destroyed: #if the object is destroyed, don't draw it, only draw its children, because we assume we're trying to clean them up
                 if self.image == None:
                     pg.draw.rect(screen, (255, 255, 255), self.rect)
+                    #Handle the rotation
+                    if self.StoredRotation != self.rotation:
+                        #Assume we rotate around the center of the image
+                        oldCenter = self.rect.center
+                        originalImage = self.BASEIMAGE
+                        self.image = originalImage
+                        self.image = pg.transform.rotate(self.image, self.rotation)
+                        self.rect = self.image.get_rect()
+                        self.rect.center = oldCenter
+                        self.StoredRotation = self.rotation
+                    if self.scale != 1:
+                        oldCenter = self.rect.center
+                        originalImage = self.BASEIMAGE
+                        self.image = originalImage
+                        self.image = pg.transform.scale(self.image, (int(self.image.get_width() * self.scale), int(self.image.get_height() * self.scale)))
+                        if self.StoredRotation != 0:
+                            self.image = pg.transform.rotate(self.image, self.StoredRotation)
+                        self.rect = self.image.get_rect()
+                        self.rect.center = oldCenter
                 else:
                     screen.blit(self.image, self.rect)
+                    #Handle the rotation
+                    if self.StoredRotation != self.rotation:
+                        oldCenter = self.rect.center
+                        originalImage = self.BASEIMAGE
+                        self.image = originalImage
+                        self.image = pg.transform.rotate(self.image, self.rotation)
+                        self.rect = self.image.get_rect()
+                        self.rect.center = oldCenter
+                        self.StoredRotation = self.rotation
+                    if self.scale != 1:
+                        oldCenter = self.rect.center
+                        originalImage = self.BASEIMAGE
+                        self.image = originalImage
+                        self.image = pg.transform.scale(self.image, (int(self.image.get_width() * self.scale), int(self.image.get_height() * self.scale)))
+                        if self.StoredRotation != 0:
+                            self.image = pg.transform.rotate(self.image, self.StoredRotation)
+                        self.rect = self.image.get_rect()
+                        self.rect.center = oldCenter
+
+            if self.children != []:
+                for child in self.children:
+                    child.draw(screen)
+                for child in self.toDestroy:
+                    if child.destroy():
+                        self.toDestroy.remove(child)
+                    else:
+                        child.draw(screen)
+				#TODO: Remove the above code, shouldn't be nessisary with the below code.
+            
+            if self.toDestroy != []:
+                for child in self.toDestroy:
+                    if child.destroy():
+                        self.toDestroy.remove(child)
+                    else:
+                        child.draw(screen)
 
         def update(self):
-            if self.held:
-                self.heldTime += 1
-            if self.heldTime >= self.heldTimeLimit and self.held:
-                self.heldTime = 0
-                self.held = False
-                self.onClickAndHold()
+            if not self.destroyed: #if not destroyed, update the button, else, try and clean up the children
+                if self.held:
+                    self.heldTime += 1
+                if self.heldTime >= self.heldTimeLimit and self.held:
+                    self.heldTime = 0
+                    self.held = False
+                    self.onClickAndHold()
+            if self.children != []:
+                for child in self.children:
+                    if child.destroyed:
+                        self.toDestroy.append(child)
+                        self.children.remove(child)
+                        continue
+                    child.update()
+            if self.toDestroy != []:
+                for child in self.toDestroy:
+                    if child.destroy():
+                        self.toDestroy.remove(child)
+                    else:
+                        child.update() #Assume the child is trying to clean up its children or something
+
 
         def positionByTopMiddle(self, pos):
             self.rect.top = pos[1]
@@ -250,6 +349,7 @@ def main():
 
         def getCenter(self):
             return self.rect.center
+        
 
         def handleInput(self, event):
             if event.type == pg.MOUSEBUTTONDOWN:
@@ -321,6 +421,9 @@ def main():
             pass
             # self.image = self.font.render(self.text, True, (255, 0, 0))
 
+
+    
+
     class Player():
         def __init__(self, playerName, playerNameImage, font):
             self.playerName = playerName
@@ -333,6 +436,8 @@ def main():
             self.selectionButtons = []
             self.rollButton = None
             self.pendingChoice = False
+            self.childObjects = []
+            self.ToDestroy = [] #Objects we're trying to clean up
 
             self.rollButton = Button(None, (0, 0), function=self.roll)
             position = self.nameImage.getBottomMiddle()
@@ -358,7 +463,7 @@ def main():
             #loadout Images, currently will be a white square
             self.loadoutImages = []
             for i in range(7):
-                button = Button(None, (0, 0), heldFunctions=[self.replaceWithWildCard])
+                button = Button(None, (0, 0), heldFunctions=[self.TransitionToWildCard])
                 button.heldFunctionArgs.append([button])
                 self.loadoutImages.append(button)
 
@@ -377,15 +482,63 @@ def main():
             for image in self.loadoutImages:
                 image.hide()
         
-        def replaceWithWildCard(self, Button):
-            oldCenter = Button.getCenter()
-            buttonSlotIndex = self.loadoutImages.index(Button)
-            Button.setImage(self.font.render("Wild", True, (255, 255, 0)))
-            Button.positionByCenter(oldCenter)
+        def replaceWithWildCard(self, button):
+            buttonSlotIndex = self.loadoutImages.index(button)
+            newButton = Button(None, (0, 0), function=self.replaceSlot, FunctionArgs=[self.loadoutImages.index(button), "Wild"])
+            newButton.setImage(self.font.render("Wild", True, (255, 255, 0)))
+            newButton.positionByCenter(button.getCenter())
+            self.loadoutImages[self.loadoutImages.index(button)] = newButton
+            self.childObjects.append(newButton)
+
+            if not button.destroy():
+                self.ToDestroy.append(button)
+
             self.loadout[buttonSlotIndex] = "Wild"
             pg.event.post(pg.event.Event(SAVEGAME))
 
-                            
+        def TransitionToWildCard(self, button):
+            #We'll attach a partical effect to the 4 corners of the button, and have them follow the corners
+            #We'll also have the button spin and shrink, and then disappear
+            #Testing the theory with a single gen
+            animManager = Animator(button)
+            animManager.slerpRotationsTo(-50, 600)
+            animManagerTwo = Animator(button)
+            animManagerTwo.lerpScaleTo(0.01, 240)
+            animManagerTwo.setOnAnimationEnd(self.replaceWithWildCard, [button])
+            button.addChild(animManager) 
+            button.addChild(animManagerTwo)
+
+            particalArgs = [[0, 0], (255, 0, 0, 255), 3, [0, 0], 10, [1, 1], 60, True, 0.1, 30, 0.01]
+            particalGen = particalGenerator([0, 0], BasicParticle, particalCountPerFrame=5, particalConstructorArgs=particalArgs)
+            particalGen2 = particalGenerator([0, 0], BasicParticle, particalCountPerFrame=5, particalConstructorArgs=particalArgs)
+            particalGen3 = particalGenerator([0, 0], BasicParticle, particalCountPerFrame=5, particalConstructorArgs=particalArgs)
+            particalGen4 = particalGenerator([0, 0], BasicParticle, particalCountPerFrame=5, particalConstructorArgs=particalArgs)
+            
+            particalGen.pos[1] = button.getTopMiddle()[1]
+            particalGen.pos[0] = button.getTopMiddle()[0]
+            particalGen.pos[0] -= button.getWidth() / 2
+
+            particalGen2.pos[1] = button.getBottomMiddle()[1]
+            particalGen2.pos[0] = button.getBottomMiddle()[0]
+            particalGen2.pos[0] -= button.getWidth() / 2
+
+            particalGen3.pos[1] = button.getTopMiddle()[1]
+            particalGen3.pos[0] = button.getTopMiddle()[0]
+            particalGen3.pos[0] += button.getWidth() / 2
+
+            particalGen4.pos[1] = button.getBottomMiddle()[1]
+            particalGen4.pos[0] = button.getBottomMiddle()[0]
+            particalGen4.pos[0] += button.getWidth() / 2
+
+            particalGen.SetParent(button)
+            particalGen2.SetParent(button)
+            particalGen3.SetParent(button)
+            particalGen4.SetParent(button)
+
+            self.childObjects.append(particalGen)
+            self.childObjects.append(particalGen2)
+            self.childObjects.append(particalGen3)
+            self.childObjects.append(particalGen4)
 
 
         def refresh(self):
@@ -450,6 +603,13 @@ def main():
         def update(self):
             for image in self.loadoutImages:
                 image.update()
+            for object in self.childObjects:
+                object.update
+            for object in self.ToDestroy:
+                if object.destroy():
+                    self.ToDestroy.remove(object)
+                else:
+                    object.update()
 
         def draw(self, screen):
             for image in self.loadoutImages:
@@ -463,6 +623,11 @@ def main():
             self.rollsTextImage.draw(screen)
             if self.lockInButton != None:
                 self.lockInButton.draw(screen)
+            for object in self.childObjects:
+                object.draw(screen)
+            for object in self.ToDestroy:
+                object.draw(screen)
+
 
         def onStart(self):
             for i in range(len(self.loadout)):
@@ -568,7 +733,7 @@ def main():
                 #If the category is a primary, secondary, or grenade, we can't have more than one of each
                 if categorySelections[i] < 3:
                     while categorySelections[i] in categorySelections[:i]:
-                        categorySelections[i] = random.choices(range(4), catagories)[0]
+                        categorySelections[i] = random.choices(range(4), categoryChances)[0]
             #Roll the selections, store them in a list so the player can choose which one they want, or if they want all 3
             selections = []
             for i in range(3):
@@ -765,6 +930,403 @@ def main():
         def show(self):
             self.hidden = False
 
+    class Animator():
+        #For very low level animations, like lerping to a position
+        def __init__(self, parent):
+            self.parent = parent
+            self.animations = []
+            #Tuples, first value is the time remaining, second value is the total time
+            self.times = []
+            self.destroyed = False
+            #Fairly certain this wont work for multiple animations, but I'm not sure
+            self.index = 0
+            self.done = True
+            self.onAnimationEnd = None
+            self.animationEndArgs = []
+
+        def destroy(self):
+            self.destroyed = True
+            return True
+
+        def lerpScaleTo(self, scale, time):
+            self.animations.append([self.lerpScale, [scale, self.index]])
+            self.times.append((time, time))
+
+        def lerpScale(self, scale, timeIndex):
+            start = self.parent.scale
+            diff = scale - start
+            step = diff / self.times[timeIndex][0]
+            start += step
+            self.parent.scale = start
+            self.times[timeIndex] = (self.times[timeIndex][0] - 1, self.times[timeIndex][1])
+            if self.times[timeIndex][0] <= 0:
+                self.animations.remove(self.animations[timeIndex])
+                self.times.remove(self.times[timeIndex])
+                self.index -= 1
+
+        def lerpToSize(self, size, time):
+            self.animations.append([self.lerpSize, [size, self.index]])
+            self.times.append((time, time))
+
+        def lerpSize(self, size, timeIndex):
+            start = self.parent.rect.size
+            x = start[0]
+            y = start[1]
+            xDiff = size[0] - x
+            yDiff = size[1] - y
+            xStep = xDiff / self.times[timeIndex][0]
+            yStep = yDiff / self.times[timeIndex][0]
+            x += xStep
+            y += yStep
+            self.parent.rect.size = (x, y)
+            self.times[timeIndex] = (self.times[timeIndex][0] - 1, self.times[timeIndex][1])
+            if self.times[timeIndex][0] <= 0:
+                self.animations.remove(self.animations[timeIndex])
+                self.times.remove(self.times[timeIndex])
+                self.index -= 1
+
+        def slerpRotateTo(self, angle, time):
+            self.animations.append([self.slerpRotate, [angle, self.index]])
+            self.times.append((time, time))
+
+        def slerpRotate(self, angle, timeIndex):
+            startingRot = 0
+
+            # Get the current rotation of the object
+            currentRot = self.parent.rotation
+
+            # Calculate the total distance to rotate
+            startRot = currentRot
+            distance = angle - startRot
+
+            # Get the remaining frames for this movement from the times list
+            frames_remaining = self.times[timeIndex][0]
+
+            # Get the total frames (initially set when the movement starts)
+            total_frames = self.times[timeIndex][1]
+
+            # Calculate the fraction of frames remaining (from 1 to 0 as time passes)
+            time_fraction = 1 - (frames_remaining / total_frames) if total_frames > 0 else 1
+            # Clamp the time fraction to be within [0, 1]
+            time_fraction = max(0, min(time_fraction, 1))
+
+            eased_fraction = time_fraction ** 4
+
+            # Use a sine wave to modulate the movement
+            # The sine wave will range from 0 to 1, so adjust it to make smooth movement
+            progress = np.sin(eased_fraction * np.pi / 2)   # np.pi ensures smooth transition (0 -> 1 and back to 0)
+
+            # Distance with progress applied
+            distance = distance * progress
+
+            # Calculate the new rotation
+            newRot = startRot + distance
+
+            # Set the new rotation of the object
+            self.parent.rotation = newRot
+            self.times[timeIndex] = (self.times[timeIndex][0] - 1, self.times[timeIndex][1])
+            if self.times[timeIndex][0] <= 0:
+                self.animations.remove(self.animations[timeIndex])
+                self.times.remove(self.times[timeIndex])
+                self.index -= 1
+
+
+        #Rotates the parent x times over the course of time
+        def slerpRotationsTo(self, rotations, time):
+            self.animations.append([self.slerpRotate, [rotations * 360, self.index]])
+            self.times.append((time, time))
+
+        def slerpRotations(self, rotations, timeIndex):
+            startingRot = 0 #assume a default rotation of 0
+            
+            #Rotates the parent x times over the course of time
+            #Rotations is the number of rotations to make
+            #time is the time to make the rotations
+
+            # Get the current rotation of the object
+            currentRot = self.parent.rotation
+
+            # Calculate the total distance to rotate
+            startRot = currentRot
+            distance = rotations * 360
+
+            # Get the remaining frames for this movement from the times list
+            frames_remaining = self.times[timeIndex][0]
+
+            # Get the total frames (initially set when the movement starts)
+            total_frames = self.times[timeIndex][1]
+
+            # Calculate the fraction of frames remaining (from 1 to 0 as time passes)
+            time_fraction = 1 - (frames_remaining / total_frames) if total_frames > 0 else 1
+            # Clamp the time fraction to be within [0, 1]
+            time_fraction = max(0, min(time_fraction, 1))
+
+            eased_fraction = time_fraction ** 1
+
+            # Use a sine wave to modulate the movement
+            # The sine wave will range from 0 to 1, so adjust it to make smooth movement
+            progress = np.sin(eased_fraction * np.pi / 2)   # np.pi ensures smooth transition (0 -> 1 and back to 0)
+
+            # Distance with progress applied
+            distance = distance * progress
+
+            # Calculate the new rotation
+            newRot = startRot + distance
+
+            # Set the new rotation of the object
+            self.parent.rotation = newRot
+            self.times[timeIndex] = (self.times[timeIndex][0] - 1, self.times[timeIndex][1])
+            if self.times[timeIndex][0] <= 0:
+                self.animations.remove(self.animations[timeIndex])
+                self.times.remove(self.times[timeIndex])
+                self.index -= 1
+
+
+
+        def lerpTo(self, pos, time):
+            self.animations.append([self.lerp, [pos, self.index]])
+            self.times.append((time, time))
+
+        def lerp(self, pos, timeIndex):
+            start = self.parent.getCenter()
+            x = start[0]
+            y = start[1]
+            xDiff = pos[0] - x
+            yDiff = pos[1] - y
+            xStep = xDiff / self.times[timeIndex][0]
+            yStep = yDiff / self.times[timeIndex][0]
+            x += xStep
+            y += yStep
+            self.parent.positionByCenter((x, y))
+            self.times[timeIndex] = (self.times[timeIndex][0] - 1, self.times[timeIndex][1])
+            if self.times[timeIndex][0] <= 0:
+                self.animations.remove(self.animations[timeIndex])
+                self.times.remove(self.times[timeIndex])
+                self.index -= 1
+
+        def sinTo(self, pos, time):
+            self.animations.append([self.sin, [pos, self.index]])
+            self.times.append((time, time))
+
+        def sin(self, pos, timeIndex):
+            # Get the current position of the object
+            current_pos = self.parent.getCenter()
+
+            # Calculate the total distance to move
+            start_pos = current_pos
+            distance = (pos[0] - start_pos[0], pos[1] - start_pos[1])
+
+             # Get the remaining frames for this movement from the times list
+            frames_remaining = self.times[timeIndex][0]
+
+            # Get the total frames (initially set when the movement starts)
+            total_frames = self.times[timeIndex][1]
+
+            # Calculate the fraction of frames remaining (from 1 to 0 as time passes)
+            time_fraction = 1 - (frames_remaining / total_frames) if total_frames > 0 else 1
+            # Clamp the time fraction to be within [0, 1]
+            time_fraction = max(0, min(time_fraction, 1))
+
+            eased_fraction = time_fraction ** 4
+            # Use a sine wave to modulate the movement
+            # The sine wave will range from 0 to 1, so adjust it to make smooth movement
+            progress = np.sin(eased_fraction * np.pi / 2)   # np.pi ensures smooth transition (0 -> 1 and back to 0)
+
+            # Distance with progress applied
+            distance = (distance[0] * progress, distance[1] * progress)
+
+            # Calculate the new position
+            new_pos = (start_pos[0] + distance[0], start_pos[1] + distance[1])
+
+            # Set the new position of the object
+            self.parent.positionByCenter(new_pos)
+            self.times[timeIndex] = (self.times[timeIndex][0] - 1, self.times[timeIndex][1])
+            if self.times[timeIndex][0] <= 0:
+                self.animations.remove(self.animations[timeIndex])
+                self.times.remove(self.times[timeIndex])
+                self.index -= 1
+
+        def update(self):
+            for animation in self.animations:
+                animation[0](*animation[1])
+
+            if len(self.animations) == 0:
+                if self.onAnimationEnd != None:
+                    self.onAnimationEnd(*self.animationEndArgs)
+                else:
+                    self.destroyed = True
+
+
+
+        def setOnAnimationEnd(self, function, args = []):
+            self.onAnimationEnd = function
+            self.animationEndArgs = args
+
+        def draw(self, screen):
+            pass
+
+        def handleInput(self, event):
+            pass
+
+
+
+
+    class particalGenerator():
+        def __init__(self, pos, particalClass, particalCountPerFrame = 10, particalConstructorArgs = []):
+            self.pos = pos
+            self.partical = particalClass
+            self.particalCountPerFrame = particalCountPerFrame
+            self.particalConstructorArgs = particalConstructorArgs
+            self.particals = []
+            self.destroyed = False
+            self.parent = None
+            self.parentPos = [0, 0]
+            self.parentOffset = [0, 0] #The offset from the parent's center, so we can position the partical generator relative to the parent
+            self.parentRotation = 0 #The rotation of the parent, so we can rotate the partical generator with the parent
+            self.parentScale = 1 #The scale of the parent, so we can scale the partical generator with the parent
+
+        def update(self):
+            if not self.destroyed:
+                for i in range(self.particalCountPerFrame):
+                    if random.random() < 0.75:
+                        continue
+                    size = random.randint(int(self.particalConstructorArgs[2] / 1.5), int(self.particalConstructorArgs[2] * 1.5))
+                    color = [random.randint(200, 255), random.randint(0, 200), 0, random.randint(100, 255)]
+                    maxSpeed = self.particalConstructorArgs[4] / size
+                    speed = [random.uniform(-maxSpeed / 2, maxSpeed / 2), random.uniform(-maxSpeed / 2, maxSpeed / 2)]
+                    #pos, color, size, speed, maxSpeed, direction, life, hasGravity = False, gravity = 0.1, fadeOutTime = 0, drag = 0.1
+                    self.particals.append(self.partical([self.pos[0], self.pos[1]], color, size, speed, maxSpeed, self.particalConstructorArgs[5], self.particalConstructorArgs[6], self.particalConstructorArgs[7], self.particalConstructorArgs[8], self.particalConstructorArgs[9], self.particalConstructorArgs[10]))
+
+
+            for partical in self.particals:
+                partical.update()
+                if partical.destroyed:
+                    self.particals.remove(partical)
+
+            if self.parent != None:
+                #Update the position based on the parent's position, rotation, and scale
+                self.pos = [self.parentPos[0] + self.parentOffset[0], self.parentPos[1] + self.parentOffset[1]]
+                self.parentRotation = self.parent.rotation
+                self.parentScale = self.parent.scale
+                self.pos = self.rotatePoint(self.pos, self.parentPos, self.parentRotation)
+                self.pos = self.scalePoint(self.pos, self.parentPos, self.parentScale)
+
+        def SetParent(self, parent):
+            self.parent = parent
+            if self.parent != None:
+                self.parentPos = parent.getCenter()
+                self.parentOffset = [self.pos[0] - self.parentPos[0], self.pos[1] - self.parentPos[1]]
+                self.parentRotation = parent.rotation
+                self.parentScale = parent.scale
+                self.parent.children.append(self)
+
+
+        def rotatePoint(self, point, center, angle):
+            angle = math.radians(-angle)
+            x = point[0] - center[0]
+            y = point[1] - center[1]
+            x1 = x * math.cos(angle) - y * math.sin(angle)
+            y1 = x * math.sin(angle) + y * math.cos(angle)
+            return [x1 + center[0], y1 + center[1]]
+        
+        #Adjusts the point based on the center of the parent and the new scale
+        def scalePoint(self, point, center, scale):
+            x = point[0] - center[0]
+            y = point[1] - center[1]
+            x1 = x * scale
+            y1 = y * scale
+            return [x1 + center[0], y1 + center[1]]
+
+        def draw(self, screen):
+            for partical in self.particals:
+                partical.draw(screen)
+
+        def handleInput(self, event):
+            for partical in self.particals:
+                partical.handleInput(event)
+
+        def getCenter(self):
+            return self.pos
+        
+        def destroy(self):
+            self.destroyed = True
+            if self.particals != []:
+                return False
+            return True
+
+        def positionByCenter(self, pos):
+            self.pos = pos
+
+
+
+    #A particle will have an image, and will be a random transparency and size
+    class BasicParticle():
+        def __init__(self, pos, color, size, speed, maxSpeed, direction, life, hasGravity = False, gravity = 0.1, fadeOutTime = 0, drag = 0.1):
+            self.pos = pos
+            self.color = color
+            self.size = size
+            self.speed = speed
+            self.maxSpeed = maxSpeed
+            self.direction = direction
+            self.life = life
+            self.destroyed = False
+            self.hasGravity = hasGravity
+            self.gravity = gravity
+            self.fadeOutTime = fadeOutTime
+            self.drag = drag
+            self.momentum = [self.speed[0], self.speed[1]]
+            self.acceleration = 30 #acceleration
+
+        def destroy(self):
+            self.destroyed = True
+
+        def fadeOut(self):
+            fadeOutRate = 255 / self.fadeOutTime
+            self.color = (self.color[0], self.color[1], self.color[2], self.color[3] - fadeOutRate)
+            self.fadeOutTime -= 1
+            if self.color[3] <= 0:
+                self.color = (self.color[0], self.color[1], self.color[2], 0)
+
+        def update(self):
+            if self.destroyed:
+                return
+            self.life -= 1
+            if self.life <= 0 and self.fadeOutTime == 0:
+                self.destroy()
+            else:
+                if self.life <= 0 and self.fadeOutTime > 0:
+                    self.fadeOut()
+                if self.hasGravity:
+                    self.momentum[1] += self.gravity
+
+                #cap the speed
+                momentumMagnitude = math.sqrt(self.momentum[0] ** 2 + self.momentum[1] ** 2)
+                if momentumMagnitude > self.maxSpeed:
+                    self.momentum[0] = self.momentum[0] / momentumMagnitude * self.maxSpeed
+                    self.momentum[1] = self.momentum[1] / momentumMagnitude * self.maxSpeed
+
+                #apply drag
+                self.momentum[0] -= self.momentum[0] * self.drag
+                self.momentum[1] -= self.momentum[1] * self.drag
+
+                #move the enemy
+                self.pos[0] += self.momentum[0]
+                self.pos[1] += self.momentum[1]
+
+                
+
+
+        def draw(self, screen):
+            if self.destroyed:
+                return
+            #transparency
+            s = pg.Surface((self.size * 2, self.size * 2), pg.SRCALPHA)
+            pg.draw.circle(s, (self.color[0], self.color[1], self.color[2], self.color[3]), (self.size, self.size), self.size)
+            screen.blit(s, (int(self.pos[0] - self.size), int(self.pos[1] - self.size)))
+
+        def handleInput(self, event):
+            pass
+
     class gameTextImage():
         def __init__(self, text, pos, font, width = 0, height = 0):
             self.text = text
@@ -921,9 +1483,6 @@ def main():
                 self.gameObjects.append(addPlayerButton4)
                 self.addPlayerButtons.append(addPlayerButton4)
             self.run()
-
-
-            
         
         def saveGame(self):
             file = open("save.dat", "w")
@@ -968,10 +1527,7 @@ def main():
                 object.update()
             for player in self.players:
                 player.update()
-                
-
-
-        
+                       
         def startGame(self):
             #split the screen into 4 equal parts, and have 1 button in each part
             addPlayerButton1 = Button(None, (320, 180), functions=[self.addPlayer])
@@ -1027,9 +1583,6 @@ def main():
             os.remove("save.dat")
             pg.event.post(pg.event.Event(pg.QUIT))
         
-
-
-
         def openConfirmBox(self, playerNum):
             #Confirms if the player wants to lock in
             #hide everything
@@ -1071,8 +1624,6 @@ def main():
             noButton.functions.append(yesButton.destroy)
             noButton.functions.append(textImage.destroy)
 
-
-
         def showAll(self):
             for object in self.gameObjects:
                 object.show()
@@ -1096,6 +1647,7 @@ def main():
             #remove the first button
             self.gameObjects.remove(self.addPlayerButtons.pop(0))
             self.numPlayers += 1
+
             if self.numPlayers == 1:
                 #position a name at top middle of quadrant 1
                 textImage = gameTextImage(textBox.text, (320, 0), self.font)
