@@ -832,7 +832,9 @@ def main():
                     button.positionByTopMiddle((x, y))
                     button.image = strategemImages[STRATEGEMS.index(selections[i])]
                 else:
-                    button.positionByTopMiddle(self.loadoutImages[categorySelections[i]].getBottomMiddle())
+                    x = self.loadoutImages[categorySelections[i]].getCenter()[0]
+                    y = self.nameImage.getBottomMiddle()[1] + 80 + 10
+                    button.positionByTopMiddle((x, y))
                     if selections[i] in PRIMARIES:
                         button.image = primaryImages[PRIMARIES.index(selections[i])]
                     elif selections[i] in SECONDARIES:
