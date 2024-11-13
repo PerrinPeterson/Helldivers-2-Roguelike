@@ -5,6 +5,11 @@ import math
 import copy
 import numpy as np
 
+#PERRIN: How to make an exe:
+#1. Install pyinstaller
+#1.5. If you haven't yet, run pyinstaller HD2RoguelikeGen/RoguelikeGen.py to create the necessary files
+#2. Run the command: pyinstaller --onefile --noconsole --icon=icon.ico HD2RoguelikeGen/RoguelikeGen.py
+
 # GEAR LISTS
 PRIMARIES = [
     "Liberator", 
@@ -32,8 +37,11 @@ PRIMARIES = [
     "Punisher Plasma", 
     "Blitzer", 
     "Dominator", 
-    "Erupter", 
+    "Erupter",
     "Exploding Crossbow",
+    "Reprimand",
+    "Constitution",
+    "Halt",
     ]
 
 SECONDARIES = [
@@ -46,6 +54,7 @@ SECONDARIES = [
     "Senator", 
     "Stim Pistol", 
     "Bushwhacker",
+    "Loyalist",
     ]
 
 GRENADES = [
@@ -175,8 +184,12 @@ def main():
         #To use the function args, you must pass a list of the arguments you want to pass to the function
         def __init__(self, image, pos, function = None, functions = [], FunctionArgs = [], heldFunctions = [], heldFunctionArgs = [], heldTimeLimit = 1):
             self.image = image
-            if self.image != None:
+            if self.image != None and type(self.image) == str:
                 self.image = pg.image.load(self.image)
+                self.BASEIMAGE = self.image
+                self.rect = self.image.get_rect()
+                self.rect.topleft = pos
+            elif self.image != None:
                 self.BASEIMAGE = self.image
                 self.rect = self.image.get_rect()
                 self.rect.topleft = pos
@@ -233,11 +246,22 @@ def main():
 
         def setImage(self, image):
             oldCenter = self.rect.center
-            if image != None:
+            if image != None and type(image) == str:
+                self.image = pg.image.load(image)
+                self.BASEIMAGE = self.image
+                self.rect = self.image.get_rect()
+                self.rect.center = oldCenter
+            elif image != None:
                 self.image = image
                 self.BASEIMAGE = image
                 self.rect = self.image.get_rect()
                 self.rect.center = oldCenter
+            else:
+                self.image = None
+                self.BASEIMAGE = None
+                self.rect = pg.Rect((0, 0), (80, 80))
+                self.rect.center = oldCenter
+
 
         def addChild(self, child):
             child.parent = self
@@ -460,7 +484,7 @@ def main():
             position = (x, y)
             self.rollsTextImage.positionByBottomMiddle(position)
 
-            #loadout Images, currently will be a white square
+            #loadout Images
             self.loadoutImages = []
             for i in range(7):
                 button = Button(None, (0, 0), heldFunctions=[self.TransitionToWildCard])
@@ -470,12 +494,10 @@ def main():
 
             nameBottomMiddle = playerNameImage.getBottomMiddle()
             imageWidth = self.loadoutImages[0].getWidth()
-            startingX = (nameBottomMiddle[0] - imageWidth * 4) + int(imageWidth / 2)
+            startingX = (nameBottomMiddle[0] - imageWidth * 4) + int(imageWidth) 
             y = nameBottomMiddle[1] + 10
             j = 0
-            for i in range(8): #we skip one to give seperation between the weapons and strategems
-                if i == 3:
-                    continue
+            for i in range(7): #we skip one to give seperation between the weapons and strategems
                 self.loadoutImages[j].positionByTopMiddle((startingX + imageWidth * i, y))
                 j += 1
 
@@ -494,6 +516,11 @@ def main():
                 self.ToDestroy.append(button)
 
             self.loadout[buttonSlotIndex] = "Wild"
+            pg.event.post(pg.event.Event(SAVEGAME))
+
+        def setPrimary(self, primary):
+            self.loadout[0] = primary
+            self.loadoutImages[0].setImage(primaryImages[PRIMARIES.index(primary)])
             pg.event.post(pg.event.Event(SAVEGAME))
 
         def TransitionToWildCard(self, button):
@@ -884,7 +911,18 @@ def main():
             self.focused = True
             self.hidden = False
             self.exitFunction = None
+            self.exitFunctionArgs = []
             self.destroyed = False
+            self.timer = 0
+            self.timeToHoldKey = 45
+            self.keyHeld = False
+            self.keyCurrentlyHeld = None
+            self.hasBeenEdited = False
+            self.cursorBlinkTime = 60
+            self.cursorBlinkTimer = 0
+            self.cursorVisible = True
+            self.cursor = "|"
+            self.text += self.cursor
 
 
         def destroy(self):
@@ -892,8 +930,16 @@ def main():
         
         def draw(self, screen):
             pg.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height))
+            #We have to render the test as though the cursor is always there, to stop it from moving back and forth
+            #text = self.font.render(self.text, True, self.textColor)
             text = self.font.render(self.text, True, self.textColor)
+            cursor = self.font.render(self.cursor, True, self.textColor)
             textRect = text.get_rect()
+            cursorRect = cursor.get_rect()
+            
+            #if the cursor is hidden, we add the width of the cursor to the text rect
+            if not self.cursorVisible:
+                textRect.width += cursorRect.width
             textRect.center = (self.x + self.width / 2, self.y + self.height / 2)
             screen.blit(text, textRect)
 
@@ -904,17 +950,73 @@ def main():
             self.focused = True
 
         def update(self):
-            pass
-        
+            if self.keyHeld:
+                self.timer += 1
+                self.cursorBlinkTimer = 0
+                self.cursorVisible = True
+                if self.timer >= self.timeToHoldKey:
+                    if self.keyCurrentlyHeld == pg.K_BACKSPACE:
+                        self.text = self.text[:-1] #Remove the cursor
+                        self.text = self.text[:-1] #Remove the last character
+                        self.text += "|" #Add the cursor
+                    else: #holding a letter key
+                        self.text = self.text[:-1] #Remove the cursor
+                        self.text += self.keyCurrentlyHeld
+                        self.text += "|" #Add the cursor
+
+            self.cursorBlinkTimer += 1
+            if self.cursorBlinkTimer >= self.cursorBlinkTime:
+                self.cursorBlinkTimer = 0
+                self.cursorVisible = not self.cursorVisible
+                if self.cursorVisible:
+                    self.text += "|" #Add the cursor
+                else:
+                    self.text = self.text[:-1]
+
+        def RemoveCursor(self):
+            self.cursorVisible = False
+
+
+
         def handleInput(self, event):
             if event.type == pg.KEYDOWN:
+                #if the cursor is visible, remove it
+                if self.cursorVisible:
+                    self.text = self.text[:-1]
+
+                #handle the key press
                 if event.key == pg.K_BACKSPACE:
+                    if not self.hasBeenEdited:
+                        self.hasBeenEdited = True
+                        self.text = ""
+                    self.keyCurrentlyHeld = pg.K_BACKSPACE
+                    self.timer = 0
+                    self.keyHeld = True
                     self.text = self.text[:-1]
                 elif event.key == pg.K_RETURN or event.key == pg.K_DELETE:
                     if self.exitFunction != None:
-                        self.exitFunction()
-                else: 
+                        if self.exitFunctionArgs != []:
+                            self.exitFunction(*self.exitFunctionArgs)
+                        else:
+                            self.exitFunction()
+                else:
+                    if not self.hasBeenEdited:
+                        self.hasBeenEdited = True
+                        self.text = "" 
                     self.text += event.unicode
+                    self.keyCurrentlyHeld = event.unicode
+                    self.timer = 0
+                    self.keyHeld = True
+
+                #Reset the cursor blink timer
+                self.cursorBlinkTimer = 0
+                self.cursorVisible = True
+                self.text += "|"
+
+            elif event.type == pg.KEYUP: #If the key is released, stop holding it
+                self.keyHeld = False
+                self.keyCurrentlyHeld = None
+
                 #if the mouse is clicked outside the text box, call the exit function
             #Is causing issues
             # elif event.type == pg.MOUSEBUTTONDOWN:
@@ -923,8 +1025,9 @@ def main():
             #             self.exitFunction()
 
         #A function to call when the player presses enter or escape, or clicks outside the text box
-        def SetExitFunction(self, function):
+        def SetExitFunction(self, function, exitFuncitonArgs = []):
             self.exitFunction = function
+            self.exitFunctionArgs = exitFuncitonArgs
 
         def hide(self):
             self.hidden = True
@@ -1435,7 +1538,7 @@ def main():
                     lineNum = 999
                     continue
                 numPlayers += 1
-                playerNameImage = gameTextImage(playerName, (0, 0), self.font)
+                playerNameImage = Button(self.font.render(playerName, True, (255, 255, 255)), (0, 0), functions=[self.changeName], FunctionArgs=[[numPlayers]])
                 self.gameObjects.append(playerNameImage)
                 if lineNum == 0:
                     playerNameImage.positionByTopMiddle((320, 0))
@@ -1446,6 +1549,8 @@ def main():
                 if lineNum == 33:
                     playerNameImage.positionByTopMiddle((960, 360))
                 player = Player(playerName, playerNameImage, self.font)
+                player.loadoutImages[0].functions = [self.viewPrimaries]
+                player.loadoutImages[0].FunctionArgs = [[numPlayers]]
                 player.loadout = [lines[lineNum + 1], lines[lineNum + 2], lines[lineNum + 3], lines[lineNum + 4], lines[lineNum + 5], lines[lineNum + 6], lines[lineNum + 7]]
                 player.rolls = int(lines[lineNum + 8])
                 #player has locked in
@@ -1569,6 +1674,20 @@ def main():
             self.gameObjects.append(TextBox(int(center[0] - boxSize[0] * 0.5), int(center[1] - boxSize[1] * 0.5), 400, 200, "Enter your name", (255, 255, 255), (0, 0, 0), self.font))
             self.gameObjects[-1].SetExitFunction(self.returnFromTextBox)
 
+        def changeName(self, playerNum):
+            #opens a text box for the player to change their name
+            #hide everything
+            for object in self.gameObjects:
+                object.hide()
+            for player in self.players:
+                player.hide()
+            #Add a text box for the player to enter their name
+            center = (640, 360)
+            boxSize = (400, 200)
+            self.gameObjects.append(TextBox(int(center[0] - boxSize[0] * 0.5), int(center[1] - boxSize[1] * 0.5), 400, 200, self.players[playerNum - 1].playerName, (255, 255, 255), (0, 0, 0), self.font))
+            self.gameObjects[-1].SetExitFunction(self.returnFromNameChange, [playerNum])
+
+
         def checkForEndGame(self):
             for player in self.players:
                 if player.lockInButton != None:
@@ -1638,6 +1757,49 @@ def main():
             for player in self.players:
                 player.hide()
 
+        def returnFromNameChange(self, playerNum):
+            #remove the text box
+            textBox = self.gameObjects.pop() #it'll always be the last object
+            
+            #show everything
+            for object in self.gameObjects:
+                object.show()
+            for player in self.players:
+                player.show()
+            if textBox.text == "":
+                return
+            self.players[playerNum - 1].playerName = textBox.text
+            self.players[playerNum - 1].nameImage.setImage(self.font.render(textBox.text, True, (255, 255, 255)))
+        
+        def viewPrimaries(self, playerNum):
+            #hide everything
+            for object in self.gameObjects:
+                object.hide()
+            for player in self.players:
+                player.hide()
+            #we'll make buttons for each primary weapon, and a wild card, rows of 15
+            #we'll also have a button to go back
+            weaponNum, i, j = 0, 0, 0
+            while weaponNum < len(PRIMARIES):
+                for i in range(15):
+                    if weaponNum < len(PRIMARIES):
+                        weapon = Button(primaryImages[weaponNum], (0, 0), functions=[self.returnFromPrimarySelection, self.players[playerNum - 1].setPrimary], FunctionArgs=[[], [PRIMARIES[weaponNum]]])
+                        weapon.positionByTopMiddle((80 + i * 80, 100 + j * 80))
+                        #weapon.setImage(self.font.render(PRIMARIES[weaponNum + i], True, (255, 0, 0)))
+                        self.gameObjects.append(weapon)
+                        weaponNum += 1
+                j += 1
+
+            backButton = Button(None, (0, 0), functions=[self.returnFromPrimarySelection])
+            backButton.positionByTopMiddle((640, 540))
+            backButton.setImage(self.font.render("Back", True, (255, 0, 0)))
+            self.gameObjects.append(backButton)
+
+        def returnFromPrimarySelection(self):
+            self.gameObjects = self.gameObjects[:len(self.gameObjects) - (len(PRIMARIES) + 1)] #remove all the buttons that will be at the end of the list
+            self.showAll()
+            
+
         def returnFromTextBox(self):
             #remove the text box
             textBox = self.gameObjects.pop() #it'll always be the last object
@@ -1650,9 +1812,20 @@ def main():
             self.gameObjects.remove(self.addPlayerButtons.pop(0))
             self.numPlayers += 1
 
+            #For testing purposes
+            # particalArgs = [[0, 0], (255, 0, 0, 255), 3, [0, 0], 10, [1, 1], 60, True, 0.1, 30, 0.01]
+            # particalGen = particalGenerator([600, 400], BasicParticle, particalCountPerFrame=10, particalConstructorArgs=particalArgs)
+            # self.gameObjects.append(particalGen)
+
+            # animator = Animator(particalGen)
+            # animator.lerpTo([1000, 400], 60)
+            # self.gameObjects.append(animator)
+            
+
+
             if self.numPlayers == 1:
                 #position a name at top middle of quadrant 1
-                textImage = gameTextImage(textBox.text, (320, 0), self.font)
+                textImage = Button(self.font.render(textBox.text, True, (255, 255, 255)), (320, 0), functions=[self.changeName], FunctionArgs=[[1]])
                 textImage.positionByTopMiddle((320, 0))
                 self.gameObjects.append(textImage)
                 
@@ -1667,11 +1840,11 @@ def main():
 
                 self.players[0].lockInButton.functions.append(self.openConfirmBox)
                 self.players[0].lockInButton.FunctionArgs.append([1])
-
-
+                self.players[0].loadoutImages[0].functions = [self.viewPrimaries]
+                self.players[0].loadoutImages[0].FunctionArgs = [1]
             elif self.numPlayers == 2:
                 #position a name at top middle of quadrant 2
-                textImage = gameTextImage(textBox.text, (960, 0), self.font)
+                textImage = Button(self.font.render(textBox.text, True, (255, 255, 255)), (960, 0), functions=[self.changeName], FunctionArgs=[[2]])
                 textImage.positionByTopMiddle((960, 0))
                 self.gameObjects.append(textImage)
 
@@ -1686,9 +1859,11 @@ def main():
 
                 self.players[1].lockInButton.functions.append(self.openConfirmBox)
                 self.players[1].lockInButton.FunctionArgs.append([2])
+                self.players[1].loadoutImages[0].functions = [self.viewPrimaries]
+                self.players[1].loadoutImages[0].FunctionArgs = [2]
             elif self.numPlayers == 3:
                 #position a name at top middle of quadrant 3
-                textImage = gameTextImage(textBox.text, (320, 360), self.font)
+                textImage = Button(self.font.render(textBox.text, True, (255, 255, 255)), (320, 360), functions=[self.changeName], FunctionArgs=[[3]])
                 textImage.positionByTopMiddle((320, 360))
                 self.gameObjects.append(textImage)
 
@@ -1703,9 +1878,13 @@ def main():
 
                 self.players[2].lockInButton.functions.append(self.openConfirmBox)
                 self.players[2].lockInButton.FunctionArgs.append([3])
+                self.players[2].loadoutImages[0].functions = [self.viewPrimaries]
+                self.players[2].loadoutImages[0].FunctionArgs = [3]
             elif self.numPlayers == 4:
                 #position a name at top middle of quadrant 4
-                textImage = gameTextImage(textBox.text, (960, 360), self.font)
+
+                textImage = Button(self.font.render(textBox.text, True, (255, 255, 255)), (960, 360), functions=[self.changeName], FunctionArgs=[[4]])
+                #textImage.image = self.font.render(textBox.text, True, (255, 255, 255))
                 textImage.positionByTopMiddle((960, 360))
                 self.gameObjects.append(textImage)
 
@@ -1720,6 +1899,8 @@ def main():
 
                 self.players[3].lockInButton.functions.append(self.openConfirmBox)
                 self.players[3].lockInButton.FunctionArgs.append([4])
+                self.players[3].loadoutImages[0].functions = [self.viewPrimaries]
+                self.players[3].loadoutImages[0].FunctionArgs = [4]
 
         def draw(self):
             self.screen.fill((0, 0, 0))
@@ -1738,10 +1919,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-    
-
-
-
-
