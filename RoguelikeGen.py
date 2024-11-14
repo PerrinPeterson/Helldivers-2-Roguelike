@@ -70,65 +70,65 @@ GRENADES = [
     "Incendiary Impact"
     ]
 
-STRATEGEMS = [
-    "Eagle Strafing Run",
-    "Eagle Airstrike",
-    "Eagle Cluster Bomb",
-    "Eagle Napalm Strike",
-    "Eagle Smoke Strike",
-    "Eagle 110MM Rocket Pods",
-    "Eagle 500kg Bomb",
-    "Orbital Precision Strike",
-    "Orbital Airburst Strike",
-    "Orbital 120MM HE Barrage",
-    "Orbital 380MM HE Barrage",
-    "Orbital Walking Barrage",
-    "Orbital Laser",
-    "Orbital Railcannon Strike",
-    "Orbital Gatling Barrage",
-    "Orbital Gas Strike",
-    "Orbital EMS Strike",
-    "Orbital Smoke Strike",
-    "Orbital Napalm Strike",
-    "Airburst Rocket Launcher",
-    "Autocannon",
-    "Expendable Anti-Tank",
-    "Flamethrower",
-    "Laser Cannon",
-    "Stalwart",
-    "Machine Gun",
-    "Arc Thrower",
-    "Grenade Launcher",
-    "Anti-Material Rifle",
-    "Railgun",
-    "Recoilless Rifle",
-    "Spear",
-    "Sterilizer",
-    "Quasar Cannon",
-    "Heavy Machine Gun",
-    "MLS-4X Commando",
-    "Guard Dog Dog Breath",
-    "Guard Dog Rover",
-    "Guard Dog",
-    "Jump Pack",
-    "Supply Pack",
-    "Shield Generator Pack",
-    "Ballistic Shield Backpack",
-    "Tesla Tower",
-    "Mortar Sentry",
-    "EMS Mortar Sentry",
-    "Machine Gun Sentry",
-    "Gatling Sentry",
-    "Anti-Personnel Minefield",
-    "Anti-Tank Mines",
-    "Incendiary Mines",
-    "Shield Generator Relay",
-    "HMG Emplacement",
-    "Autocannon Sentry",
-    "Rocket Sentry",
-    "Patriot Exosuit",
-    "Emancipator Exosuit",
-    ]
+STRATEGEMS = {
+    "Eagle Strafing Run":           ["Eagle"],
+    "Eagle Airstrike":              ["Eagle"],
+    "Eagle Cluster Bomb":           ["Eagle"],
+    "Eagle Napalm Strike":          ["Eagle"],
+    "Eagle Smoke Strike":           ["Eagle"],
+    "Eagle 110MM Rocket Pods":      ["Eagle"],
+    "Eagle 500kg Bomb":             ["Eagle"],
+    "Orbital Precision Strike":     ["Orbital"],
+    "Orbital Airburst Strike":      ["Orbital"],
+    "Orbital 120MM HE Barrage":     ["Orbital"],
+    "Orbital 380MM HE Barrage":     ["Orbital"],
+    "Orbital Walking Barrage":      ["Orbital"],
+    "Orbital Laser":                ["Orbital"],
+    "Orbital Railcannon Strike":    ["Orbital"],
+    "Orbital Gatling Barrage":      ["Orbital"],
+    "Orbital Gas Strike":           ["Orbital"],
+    "Orbital EMS Strike":           ["Orbital"],
+    "Orbital Smoke Strike":         ["Orbital"],
+    "Orbital Napalm Strike":        ["Orbital"],
+    "Airburst Rocket Launcher":     ["Weapon"],
+    "Autocannon":                   ["Weapon"],
+    "Expendable Anti-Tank":         ["Weapon"],
+    "Flamethrower":                 ["Weapon"],
+    "Laser Cannon":                 ["Weapon"],
+    "Stalwart":                     ["Weapon"],
+    "Machine Gun":                  ["Weapon"],
+    "Arc Thrower":                  ["Weapon"],
+    "Grenade Launcher":             ["Weapon"],
+    "Anti-Material Rifle":          ["Weapon"],
+    "Railgun":                      ["Weapon"],
+    "Recoilless Rifle":             ["Weapon"],
+    "Spear":                        ["Weapon"],
+    "Sterilizer":                   ["Weapon"],
+    "Quasar Cannon":                ["Weapon"],
+    "Heavy Machine Gun":            ["Weapon"],
+    "MLS-4X Commando":              ["Weapon"],
+    "Guard Dog Dog Breath":         ["Backpack"],
+    "Guard Dog Rover":              ["Backpack"],
+    "Guard Dog":                    ["Backpack"],
+    "Jump Pack":                    ["Backpack"],
+    "Supply Pack":                  ["Backpack"],
+    "Shield Generator Pack":        ["Backpack"],
+    "Ballistic Shield Backpack":    ["Backpack"],
+    "Tesla Tower":                  ["Sentry"],
+    "Mortar Sentry":                ["Sentry"],
+    "EMS Mortar Sentry":            ["Sentry"],
+    "Machine Gun Sentry":           ["Sentry"],
+    "Gatling Sentry":               ["Sentry"],
+    "Anti-Personnel Minefield":     ["Sentry"],
+    "Anti-Tank Mines":              ["Sentry"],
+    "Incendiary Mines":             ["Sentry"],
+    "Shield Generator Relay":       ["Sentry"],
+    "HMG Emplacement":              ["Sentry"],
+    "Autocannon Sentry":            ["Sentry"],
+    "Rocket Sentry":                ["Sentry"],
+    "Patriot Exosuit":              ["Vehicle"],
+    "Emancipator Exosuit":          ["Vehicle"],
+}
 
 Build = [
     None, # Primary
@@ -173,16 +173,19 @@ def main():
             grenadeImages.append(None)
     strategems = []
     strategemImages = []
-    for i in range(len(STRATEGEMS)):
+    for key in STRATEGEMS:
+        # if key == "Emancipator Exosuit" or key == "Patriot Exosuit":
+        #     strategems.append(10000)
+        # else:
         strategems.append(1)
         try:
-            strategemImages.append(pg.image.load(imageBasePath + STRATEGEMS[i] + ".png"))
+            strategemImages.append(pg.image.load(imageBasePath + key + ".png"))
         except:
             strategemImages.append(None)
 
     class Button:
         #To use the function args, you must pass a list of the arguments you want to pass to the function
-        def __init__(self, image, pos, function = None, functions = [], FunctionArgs = [], heldFunctions = [], heldFunctionArgs = [], heldTimeLimit = 1):
+        def __init__(self, image, pos, function = None, functions = [], FunctionArgs = [], RightClickFunctions = [], RightClickFunctionArgs = [], heldFunctions = [], heldFunctionArgs = [], heldTimeLimit = 1):
             self.image = image
             if self.image != None and type(self.image) == str:
                 self.image = pg.image.load(self.image)
@@ -224,6 +227,14 @@ def main():
             self.scale = 1
             self.children = []
             self.toDestroy = []
+
+            self.rightClickFunctions = []
+            for i in range(len(RightClickFunctions)):
+                self.rightClickFunctions.append(RightClickFunctions[i])
+            self.rightClickFunctionArgs = []
+            for i in range(len(RightClickFunctionArgs)):
+                self.rightClickFunctionArgs.append(RightClickFunctionArgs[i])
+
 
 
         def destroy(self):
@@ -381,6 +392,10 @@ def main():
                     pos = pg.mouse.get_pos()
                     if self.isClicked(pos):
                         self.held = True
+                if event.button == 3:
+                    pos = pg.mouse.get_pos()
+                    if self.isClicked(pos):
+                        self.OnRightClick()
             if event.type == pg.MOUSEBUTTONUP:
                 if event.button == 1:
                     pos = pg.mouse.get_pos()
@@ -428,6 +443,19 @@ def main():
                         self.functions[i](*arguments)
                     else:
                         self.functions[i]()
+
+        def OnRightClick(self):
+            for i in range(len(self.rightClickFunctions)):
+                if self.rightClickFunctions[i] != None:
+                    #Maybe this works, maybe it doesn't. I'm not sure if this will work with multiple functions
+                    if len(self.rightClickFunctionArgs) > i:
+                        #We know there is a list of parameters for this function in the list of function args
+                        arguments = []
+                        for j in range(len(self.rightClickFunctionArgs[i])):
+                            arguments.append(self.rightClickFunctionArgs[i][j])
+                        self.rightClickFunctions[i](*arguments)
+                    else:
+                        self.rightClickFunctions[i]()
 
         def getWidth(self):
             return self.rect.width
@@ -580,7 +608,10 @@ def main():
                 elif i == 2:
                     self.loadoutImages[i].setImage(grenadeImages[GRENADES.index(self.loadout[i])])
                 else:
-                    self.loadoutImages[i].setImage(strategemImages[STRATEGEMS.index(self.loadout[i])])
+                    self.loadoutImages[i].setImage(strategemImages[list(STRATEGEMS).index(self.loadout[i])])
+                    if "Backpack" in STRATEGEMS[self.loadout[i]] or "Weapon" in STRATEGEMS[self.loadout[i]]:
+                        self.loadoutImages[i].functions.append(self.openReplacementMenu)
+                        self.loadoutImages[i].FunctionArgs.append([i])
             self.nameImage.image = self.font.render(self.playerName, True, (255, 255, 255))
             self.nameImage.show()
             self.rollsTextImage.image = self.font.render("Rolls: " + str(self.rolls) + "/" + str(self.maxRolls), True, (255, 255, 255))
@@ -599,8 +630,10 @@ def main():
             if self.lockInButton != None:
                 self.lockInButton.hide()
             self.rollsTextImage.hide()
+            self.nameImage.hide()
 
         def show(self):
+            self.nameImage.show()
             self.rollsTextImage.show()
             if self.loadout[0] is not None:
                 for image in self.loadoutImages:
@@ -626,17 +659,24 @@ def main():
                 self.rollButton.handleInput(event)
             if self.lockInButton != None:
                 self.lockInButton.handleInput(event)
+            for object in self.childObjects:
+                object.handleInput(event)
+            for object in self.ToDestroy:
+                object.handleInput(event)
 
         def update(self):
             for image in self.loadoutImages:
                 image.update()
-            for object in self.childObjects:
-                object.update
             for object in self.ToDestroy:
                 if object.destroy():
                     self.ToDestroy.remove(object)
                 else:
                     object.update()
+            for object in self.childObjects:
+                object.update()
+                if object.destroyed:
+                    self.ToDestroy.append(object)
+                    self.childObjects.remove(object)
 
         def draw(self, screen):
             for image in self.loadoutImages:
@@ -692,29 +732,33 @@ def main():
                     self.loadout[i] = GRENADES[selection]
                     self.loadoutImages[i].setImage(grenadeImages[selection])
                 else:
-                    selection = random.choices(range(len(STRATEGEMS)), strategems)[0]
+                    selection = random.choices(list(STRATEGEMS.keys()), strategems)[0]
                     currentBuild = self.loadout[3:i]
-                    while STRATEGEMS[selection] in currentBuild:
+                    bHasVehicle = False
+                    for strategem in currentBuild:
+                        if "Vehicle" in STRATEGEMS[strategem]:
+                            bHasVehicle = True
+                            break
+                    while selection in currentBuild or ("Vehicle" in STRATEGEMS[selection] and bHasVehicle):
                         #if the strategem is already in the self.loadout, try again
-                        selection = random.choices(range(len(STRATEGEMS)), strategems)[0]
+                        selection = random.choices(list(STRATEGEMS.keys()), strategems)[0]
                     #reduce the chance of getting the same strategem again, and increase the chance of getting the other ones
-                    strategems[selection] /= 1.5
+                    strategems[list(STRATEGEMS).index(selection)] /= 1.5
                     for j in range(len(strategems)):
-                        if j != selection:
+                        if j != list(STRATEGEMS).index(selection):
                             strategems[j] *= 1.01
                             if strategems[j] > 10:
                                 strategems[j] = 10
-                    self.loadout[i] = STRATEGEMS[selection]
-                    self.loadoutImages[i].setImage(strategemImages[selection])
+                    self.loadout[i] = selection
+                    self.loadoutImages[i].setImage(strategemImages[list(STRATEGEMS).index(selection)])
+                    if "Backpack" in STRATEGEMS[selection] or "Weapon" in STRATEGEMS[selection]:
+                        self.loadoutImages[i].functions.append(self.openReplacementMenu)
+                        self.loadoutImages[i].FunctionArgs.append([i])
 
             for image in self.loadoutImages:
                 image.show()
 
             # #Create a roll Button
-            # self.rollButton = Button(None, (0, 0), function=self.roll)
-            # position = self.nameImage.getBottomMiddle()
-            # position = (position[0], position[1] + self.rollButton.getHeight() * 3)
-            # self.rollButton.positionByTopMiddle(position)
             self.rollButton.show()
             self.lockInButton.show()
 
@@ -738,7 +782,70 @@ def main():
                     self.loadoutImages[slot].setImage(grenadeImages[GRENADES.index(item)])
             else:
                 self.loadout[slot] = item
-                self.loadoutImages[slot].setImage(strategemImages[STRATEGEMS.index(item)])
+                self.loadoutImages[slot].setImage(strategemImages[list(STRATEGEMS).index(item)])
+                self.loadoutImages[slot].functions = []
+                self.loadoutImages[slot].FunctionArgs = []
+                #New addition, if the slot is a Backpack, or a weapon, we have to add functions to them.
+                if "Backpack" in STRATEGEMS[item] or "Weapon" in STRATEGEMS[item]:
+
+                    self.loadoutImages[slot].functions.append(self.openReplacementMenu)
+                    self.loadoutImages[slot].FunctionArgs.append([slot])
+
+
+
+
+            pg.event.post(pg.event.Event(SAVEGAME))
+
+        def openReplacementMenu(self, slot):
+            self.hide()
+            buttons = []
+            itemNumber, i, j = 0, 0, 0 
+            keys = list(STRATEGEMS.keys())
+            tag = ""
+            if "Weapon" in STRATEGEMS[self.loadout[slot]]:
+                tag = "Weapon"
+            elif "Backpack" in STRATEGEMS[self.loadout[slot]]:
+                tag = "Backpack"
+
+            while itemNumber < len(keys):
+                i = 0
+                while i < 7:
+                    if itemNumber < len(keys):
+                        if keys[itemNumber] in self.loadout or tag not in STRATEGEMS[keys[itemNumber]]:
+                            itemNumber += 1
+                            continue
+                        button = Button(None, (0, 0), functions=[self.replaceSlot, self.show], FunctionArgs=[[slot, keys[itemNumber]]])
+                        button.setImage(strategemImages[itemNumber])
+                        button.positionByTopMiddle(((self.nameImage.getBottomMiddle()[0] - button.getWidth() * 3) + i * button.getWidth(), self.nameImage.getBottomMiddle()[1] + 10 + j * 80))
+                        buttons.append(button)
+                        self.childObjects.append(button)
+                        itemNumber += 1
+                        i += 1
+
+                    else:
+                        break
+                j += 1
+                if itemNumber >= len(keys):
+                    break
+
+            
+                    
+                
+            #Back button
+            backButton = Button(None, (0, 0), function=self.show)
+            backButton.setImage(self.font.render("Back", True, (255, 0, 0)))
+            backButton.positionByTopMiddle(self.nameImage.getTopMiddle())
+            buttons.append(backButton)
+            self.childObjects.append(backButton)
+
+
+
+            #append the destroy functions of all buttons to each button
+            for button in buttons:
+                for buttonTwo in buttons:
+                    button.functions.append(buttonTwo.destroy)
+                
+
 
 
         def madeDecision(self):
@@ -804,15 +911,21 @@ def main():
                             if grenades[j] > 10:
                                 grenades[j] = 10
                 else:
-                    selection = random.choices(range(len(STRATEGEMS)), strategems)[0]
-                    #ensure the selection isn't already in the build
-                    while STRATEGEMS[selection] in self.loadout or STRATEGEMS[selection] in selections:
-                        selection = random.choices(range(len(STRATEGEMS)), strategems)[0]
-                    selections.append(STRATEGEMS[selection])
+                    selection = random.choices(list(STRATEGEMS.keys()), strategems)[0]
+                    #ensure the selection isn't already in the build or that there isn't a discrepensy (like a second mech)
+                    bHasVehicle = False
+                    for item in selections:
+                        if item in list(STRATEGEMS.keys()):
+                            if "Vehicle" in STRATEGEMS[item]:
+                                bHasVehicle = True
+                                break
+                    while selection in self.loadout or selection in selections or ("Vehicle" in STRATEGEMS[selection] and bHasVehicle):
+                        selection = random.choices(list(STRATEGEMS.keys()), strategems)[0]
+                    selections.append(selection)
                     #reduce the chance of getting the same strategem again, and increase the chance of getting the other ones
-                    strategems[selection] /= 1.5
+                    strategems[list(STRATEGEMS).index(selection)] /= 1.5
                     for j in range(len(strategems)):
-                        if j != selection:
+                        if j != list(STRATEGEMS).index(selection):
                             strategems[j] *= 1.01
                             if strategems[j] > 10:
                                 strategems[j] = 10
@@ -823,8 +936,31 @@ def main():
             for i in range(3):
                 if categorySelections[i] == 3:
                     strategemCount += 1
+            
+            #check to see if the build has a mech and the selections have a mech
+            vehicleSlot = 0
+            vehicleindex = 0
+            bVehicleEquipped = False
+            for item in self.loadout:
+                if item in list(STRATEGEMS.keys()):
+                    if "Vehicle" in STRATEGEMS[item]:
+                        vehicleSlot = self.loadout.index(item) - 3
+                        for selection in selections:
+                            if selection in list(STRATEGEMS.keys()):
+                                vehicleindex += 1
+                                if "Vehicle" in STRATEGEMS[selection]:
+                                    strategemSlots[vehicleSlot] = selections.index(selection) + 1
+                                    bVehicleEquipped = True
+                                    break
+                        if bVehicleEquipped:
+                            break
+            
             #roll a random slot for each strategem
             for i in range(strategemCount):
+                if bVehicleEquipped:
+                    if vehicleindex == i + 1:
+                        continue
+                    
                 slot = random.randint(0, 3)
                 #ensure the slot isn't already taken
                 while strategemSlots[slot] != 0:
@@ -833,7 +969,7 @@ def main():
                 selectionIndex = 0
                 skips = i
                 for j in range(len(selections)):
-                    if selections[j] in STRATEGEMS:
+                    if selections[j] in list(STRATEGEMS.keys()):
                         if skips == 0:
                             selectionIndex = j
                             break
@@ -857,7 +993,7 @@ def main():
                     x = self.loadoutImages[3 + strategemSlots.index(i+1)].getCenter()[0]
                     y = self.nameImage.getBottomMiddle()[1] + 80 + 10
                     button.positionByTopMiddle((x, y))
-                    button.image = strategemImages[STRATEGEMS.index(selections[i])]
+                    button.image = strategemImages[list(STRATEGEMS).index(selections[i])]
                 else:
                     x = self.loadoutImages[categorySelections[i]].getCenter()[0]
                     y = self.nameImage.getBottomMiddle()[1] + 80 + 10
@@ -879,8 +1015,8 @@ def main():
                 else:
                     slotNums[i] = categorySelections[i]
             button = Button(None, (0, 0), functions=[self.replaceSlot, self.replaceSlot, self.replaceSlot, self.madeDecision], FunctionArgs=[[slotNums[0], selections[0]], [slotNums[1], selections[1]], [slotNums[2], selections[2]]])
-            middleOfSlot3 = self.loadoutImages[2].getBottomMiddle()
-            middleOfSlot3 = (middleOfSlot3[0] + button.getWidth(), middleOfSlot3[1])
+            middleOfSlot3 = self.loadoutImages[3].getBottomMiddle()
+            middleOfSlot3 = (middleOfSlot3[0], middleOfSlot3[1] + round(button.getHeight()))
             button.positionByTopMiddle(middleOfSlot3)
             button.setImage(self.font.render("All", True, (255, 0, 0)))
             button.show()
@@ -1520,51 +1656,69 @@ def main():
             self.autoSave = True
             #self.startGame()
 
+
+        #TODO: add a game profile
         def loadGame(self):
+            self.gameObjects = []
+            self.addPlayerButtons = []
             try:
                 file = open("save.dat", "r")
             except:
-                self.startGame()
-                self.run()
                 return
             data = file.read()
             file.close()
             lines = data.split("\n")
-            lineNum = 0
+
+            playersInGame = {}
+            for player in self.players:
+                playersInGame[player.playerName] = 0 #default to do not load
+            self.players = []
+            
+            directoryLocation = 0
+            directoryLocation = lines[0].split(": ")[1]
+            directoryLocation = int(directoryLocation)
+
+            i = directoryLocation + 1
+            while i < len(lines):
+                if lines[i] == "":
+                    break
+                playerName = lines[i]
+                if playerName in playersInGame:
+                    playersInGame[playerName] = int(lines[i + 1])
+                i += 2
+            
             numPlayers = 0
-            while lineNum < len(lines):
-                playerName = lines[lineNum]
-                if playerName == "!None#" or playerName == "" or playerName == "\n":
-                    lineNum = 999
-                    continue
+            for playerData in playersInGame:
+                playerIndex = playersInGame[playerData]
+                playerName = lines[playerIndex]
                 numPlayers += 1
+                playerNameImage = None
                 playerNameImage = Button(self.font.render(playerName, True, (255, 255, 255)), (0, 0), functions=[self.changeName], FunctionArgs=[[numPlayers]])
+                playerNameImage.rightClickFunctions.append(self.removePlayer)
+                playerNameImage.rightClickFunctionArgs.append([numPlayers])
                 self.gameObjects.append(playerNameImage)
-                if lineNum == 0:
+                if numPlayers == 1:
                     playerNameImage.positionByTopMiddle((320, 0))
-                if lineNum == 11:
+                if numPlayers == 2:
                     playerNameImage.positionByTopMiddle((960, 0))
-                if lineNum == 22:
+                if numPlayers == 3:
                     playerNameImage.positionByTopMiddle((320, 360))
-                if lineNum == 33:
+                if numPlayers == 4:
                     playerNameImage.positionByTopMiddle((960, 360))
                 player = Player(playerName, playerNameImage, self.font)
                 player.loadoutImages[0].functions = [self.viewPrimaries]
                 player.loadoutImages[0].FunctionArgs = [[numPlayers]]
-                player.loadout = [lines[lineNum + 1], lines[lineNum + 2], lines[lineNum + 3], lines[lineNum + 4], lines[lineNum + 5], lines[lineNum + 6], lines[lineNum + 7]]
-                player.rolls = int(lines[lineNum + 8])
-                #player has locked in
-                if lines[lineNum + 9] == "True":
+                player.loadout = [lines[playerIndex + 1], lines[playerIndex + 2], lines[playerIndex + 3], lines[playerIndex + 4], lines[playerIndex + 5], lines[playerIndex + 6], lines[playerIndex + 7]]
+                player.rolls = int(lines[playerIndex + 8])
+                if lines[playerIndex + 9] == "True":
                     player.rollButton = None
                     player.lockInButton = None
                 else:
                     player.lockInButton.functions = [self.openConfirmBox]
                     player.lockInButton.FunctionArgs = [[numPlayers]]
-
                 player.show()
                 player.refresh()
                 self.players.append(player)
-                lineNum += 11 #Skip a blank line
             self.numPlayers = numPlayers
 
             if numPlayers < 1:
@@ -1589,25 +1743,172 @@ def main():
                 addPlayerButton4.setImage(self.font.render("Add Player", True, (255, 0, 0)))
                 self.gameObjects.append(addPlayerButton4)
                 self.addPlayerButtons.append(addPlayerButton4)
-            self.run()
+            # lineNum = 0
+            # numPlayers = 0
+            # while lineNum < len(lines):
+            #     playerName = lines[lineNum]
+            #     if playerName == "!None#" or playerName == "" or playerName == "\n":
+            #         lineNum = 999
+            #         continue
+            #     numPlayers += 1
+            #     playerNameImage = None
+            #     playerNameImage = Button(self.font.render(playerName, True, (255, 255, 255)), (0, 0), functions=[self.changeName], FunctionArgs=[[numPlayers]])
+            #     playerNameImage.rightClickFunctions.append(self.removePlayer)
+            #     playerNameImage.rightClickFunctionArgs.append([numPlayers])
+            #     self.gameObjects.append(playerNameImage)
+            #     if lineNum == 0:
+            #         playerNameImage.positionByTopMiddle((320, 0))
+            #     if lineNum == 11:
+            #         playerNameImage.positionByTopMiddle((960, 0))
+            #     if lineNum == 22:
+            #         playerNameImage.positionByTopMiddle((320, 360))
+            #     if lineNum == 33:
+            #         playerNameImage.positionByTopMiddle((960, 360))
+            #     player = Player(playerName, playerNameImage, self.font)
+            #     player.loadoutImages[0].functions = [self.viewPrimaries]
+            #     player.loadoutImages[0].FunctionArgs = [[numPlayers]]
+            #     player.loadout = [lines[lineNum + 1], lines[lineNum + 2], lines[lineNum + 3], lines[lineNum + 4], lines[lineNum + 5], lines[lineNum + 6], lines[lineNum + 7]]
+            #     player.rolls = int(lines[lineNum + 8])
+            #     #player has locked in
+            #     if lines[lineNum + 9] == "True":
+            #         player.rollButton = None
+            #         player.lockInButton = None
+            #     else:
+            #         player.lockInButton.functions = [self.openConfirmBox]
+            #         player.lockInButton.FunctionArgs = [[numPlayers]]
+
+            #     player.show()
+            #     player.refresh()
+            #     self.players.append(player)
+            #     lineNum += 11 #Skip a blank line
+            # self.numPlayers = numPlayers
+
+            # self.run()
         
         def saveGame(self):
-            file = open("save.dat", "w")
-            for player in self.players:
-                if player.loadout[0] == None:
-                    continue
-                file.write(player.playerName + "\n")
-                for i in range(len(player.loadout)):
-                    file.write(player.loadout[i] + "\n")
-                file.write(str(player.rolls) + "\n")
-                if player.lockInButton == None:
-                    file.write("True\n")
-                else:
-                    file.write("False\n")
-                file.write("\n") #Blank line to seperate players, for readability
-            for i in range(4 - len(self.players)):
-                file.write("!None#\n")
+
+            #error handle if the file is not found
+            try:
+                file = open("save.dat", "r")
+            except:
+                file = open("save.dat", "w")
+                #Write the default save File
+                file.write("Directory: 3\n")
+                file.write("\n")
+                file.write("Directory")
+                file.close()
+
+            #open the save and read the data
+            file = open("save.dat", "r")
+            data = file.read()
+
+            #split the data into lines
+            lines = data.split("\n")
+            if "Directory:" not in lines[0]:
+                file.close()
+                file = open("save.dat", "w")
+                file.write("Directory: 3\n")
+                file.write("\n")
+                file.write("Directory")
+                file.close()
+                file = open("save.dat", "r")
+                data = file.read()  
+
+            lines = data.split("\n")
             file.close()
+
+
+            if lines[-1] == "":
+                lines.pop(-1)
+            
+            #Get the current player names
+            playerNames = []
+            for player in self.players:
+                playerNames.append(player.playerName)
+
+            #Read in the directoryLocation
+            directoryLocation = 0
+            directoryLocation = lines[0].split(": ")[1]
+            directoryLocation = int(directoryLocation)
+
+            #get the saved player names
+            savedPlayerNames = []
+            i = directoryLocation + 1
+            while i < len(lines):
+                savedPlayerNames.append(lines[i])
+                i += 2
+
+            #See if we can simply quick save
+            bQuickSave = True
+            notSaved = []
+            for i in range(len(playerNames)):
+                if playerNames[i] not in savedPlayerNames:
+                    bQuickSave = False
+                    notSaved.append(playerNames[i])
+            if not bQuickSave:
+                #We have to make 1 or more new save profiles, and generate a new directory location
+                blankProfile = [
+                    "Primary",
+                    "Secondary",
+                    "Grenade",
+                    "Stratagem1",
+                    "Stratagem2",
+                    "Stratagem3",
+                    "Stratagem4",
+                    "Rolls",
+                    "bHasLockedIn",
+                ]
+                profileLocation = directoryLocation - 1
+
+                for i in range(len(notSaved)):
+                    if directoryLocation != 3:
+                        lines.insert(profileLocation, "")
+                        profileLocation += 1
+                    #Add a blank line
+                    savedPlayerNames.append(notSaved[i])
+                    # lines.insert(profileLocation, "\n")
+                    lines.insert(profileLocation, notSaved[i])
+                    for j in range(len(blankProfile)):
+                        lines.insert(profileLocation + 1 + j, blankProfile[j])
+                    if directoryLocation == 3:
+                        lines.insert(profileLocation + 1 + len(blankProfile), "")
+                    lines.append(notSaved[i])
+                    lines.append(str(profileLocation))
+                    profileLocation += 10
+                #Update the directory location
+                lines[0] = "Directory: " + str(profileLocation + 1)
+                # lines.insert(profileLocation + 1, "\n")
+                #Save the file
+                file = open("save.dat", "w")
+                for line in lines:
+                    file.write(line + "\n")
+                file.close()
+                bQuickSave = True
+
+
+            
+            if bQuickSave:
+                #Quick save requires only that the player names are already in the save file, which means the file doesn't need to change in length
+                #We can simply overwrite the data
+                directoryLocation = int(lines[0].split(": ")[1])
+                for i in range(len(playerNames)):
+                    playerProfileLocation = int(lines[directoryLocation + 2 * (savedPlayerNames.index(playerNames[i]) + 1)])
+                    lines[playerProfileLocation + 1] = self.players[i].loadout[0]
+                    lines[playerProfileLocation + 2] = self.players[i].loadout[1]
+                    lines[playerProfileLocation + 3] = self.players[i].loadout[2]
+                    lines[playerProfileLocation + 4] = self.players[i].loadout[3]
+                    lines[playerProfileLocation + 5] = self.players[i].loadout[4]
+                    lines[playerProfileLocation + 6] = self.players[i].loadout[5]
+                    lines[playerProfileLocation + 7] = self.players[i].loadout[6]
+                    lines[playerProfileLocation + 8] = str(self.players[i].rolls)
+                    if self.players[i].lockInButton == None:
+                        lines[playerProfileLocation + 9] = "True"
+                    else:
+                        lines[playerProfileLocation + 9] = "False"
+                file = open("save.dat", "w")
+                for line in lines:
+                    file.write(line + "\n")
+                file.close()
 
         def run(self):
             while self.running:
@@ -1686,6 +1987,30 @@ def main():
             boxSize = (400, 200)
             self.gameObjects.append(TextBox(int(center[0] - boxSize[0] * 0.5), int(center[1] - boxSize[1] * 0.5), 400, 200, self.players[playerNum - 1].playerName, (255, 255, 255), (0, 0, 0), self.font))
             self.gameObjects[-1].SetExitFunction(self.returnFromNameChange, [playerNum])
+            pg.event.post(pg.event.Event(SAVEGAME))   
+
+        def refresh(self):
+            self.saveGame()
+            self.loadGame()
+
+        def removePlayer(self, playerNum):
+            #hide everything
+            for object in self.gameObjects:
+                object.hide()
+            for player in self.players:
+                player.hide()
+            #remove the player
+            self.gameObjects.remove(self.players[playerNum - 1].nameImage)
+            self.players.pop(playerNum - 1)
+            self.numPlayers -= 1
+            #show everything
+            for object in self.gameObjects:
+                object.show()
+            for player in self.players:
+                player.show()
+
+            self.refresh()
+            pg.event.post(pg.event.Event(SAVEGAME))
 
 
         def checkForEndGame(self):
@@ -1799,6 +2124,29 @@ def main():
             self.gameObjects = self.gameObjects[:len(self.gameObjects) - (len(PRIMARIES) + 1)] #remove all the buttons that will be at the end of the list
             self.showAll()
             
+        def CheckForProfile(self, playerName):
+            #checks if the profile exists in save.dat
+            try:
+                file = open("save.dat", "r")
+            except:
+                return False
+            data = file.read()
+            file.close()
+            lines = data.split("\n")
+            if "Directory:" not in lines[0] or lines[0] == "Directory: 3":
+                return False
+            directoryLocation = 0
+            directoryLocation = lines[0].split(": ")[1]
+            directoryLocation = int(directoryLocation)
+            i = directoryLocation + 1
+            while i < len(lines):
+                if lines[i] == "":
+                    break
+                if playerName == lines[i]:
+                    return True
+                i += 2
+            return False
+
 
         def returnFromTextBox(self):
             #remove the text box
@@ -1820,6 +2168,12 @@ def main():
             # animator = Animator(particalGen)
             # animator.lerpTo([1000, 400], 60)
             # self.gameObjects.append(animator)
+
+            #TODO: replace this with a "Load profile" screen
+            if self.CheckForProfile(textBox.text):
+                self.players.append(Player(textBox.text, Button(None, (0, 0)), self.font))
+                self.loadGame()
+                return
             
 
 
@@ -1914,7 +2268,8 @@ def main():
     pg.init()
     pg.font.init()
     game = Game()
-    game.loadGame()
+    game.startGame()
+    game.run()
 
 
 if __name__ == "__main__":
