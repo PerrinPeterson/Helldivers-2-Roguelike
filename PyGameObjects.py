@@ -2,11 +2,78 @@ import pygame as pg
 import math
 import random
 import numpy as np
+import copy
 
+class GameObject:
+    def __init__(self, pos, image, parent = None, rotation = 0, scale = 1, opacity = 255):
+        self.image = image
+        self.BASEIMAGE = image
+        self.rect = self.image.get_rect()
+        self.rect.topleft = pos
+        self.hidden = False
+        self.destroyed = False
+        self.parent = parent
+        self.rotation = rotation
+        self.StoredRotation = rotation
+        self.scale = scale
+        self.opacity = opacity
+        self.children = []
+        self.toDestroy = []
+
+    def destroy(self):
+        failedToDestroy = False
+        for child in self.children:
+            if not child.destroy():
+                failedToDestroy = True
+                self.toDestroy.append(child)
+            self.children.remove(child)
+        for child in self.toDestroy:
+            if not child.destroy():
+                failedToDestroy = True
+            else:
+                self.toDestroy.remove(child)
+        if failedToDestroy:
+            self.destroyed = True
+            return False
+
+    def draw(self, screen):
+        if not self.hidden and not self.destroyed:
+            #Handle the rotation
+            if self.StoredRotation != self.rotation:
+                oldCenter = self.rect.center
+                originalImage = self.BASEIMAGE
+                self.image = originalImage
+                self.image = pg.transform.rotate(self.image, self.rotation)
+                self.rect = self.image.get_rect()
+                self.rect.center = oldCenter
+                self.StoredRotation = self.rotation
+            if self.scale != 1:
+                oldCenter = self.rect.center
+                originalImage = self.BASEIMAGE
+                self.image = originalImage
+                self.image = pg.transform.scale(self.image, (int(self.image.get_width() * self.scale), int(self.image.get_height() * self.scale)))
+                if self.StoredRotation != 0:
+                    self.image = pg.transform.rotate(self.image, self.StoredRotation)
+                self.rect = self.image.get_rect()
+                self.rect.center = oldCenter
+            #opacity
+            s = pg.Surface((self.rect.width, self.rect.height), pg.SRCALPHA)
+            s.blit(self.image, (0, 0))
+            s.set_alpha(self.opacity)
+            screen.blit(s, self.rect)
+
+        if self.children != []:
+            for child in self.children:
+                child.draw(screen)
+            for child in self.toDestroy:
+                if child.destroy():
+                    self.toDestroy.remove(child)
+                else:
+                    child.draw(screen)
 
 class Button:
     #To use the function args, you must pass a list of the arguments you want to pass to the function
-    def __init__(self, image, pos, function = None, functions = [], FunctionArgs = [], RightClickFunctions = [], RightClickFunctionArgs = [], heldFunctions = [], heldFunctionArgs = [], heldTimeLimit = 1):
+    def __init__(self, image, pos, function = None, functions = [], FunctionArgs = [], RightClickFunctions = [], RightClickFunctionArgs = [], heldFunctions = [], heldFunctionArgs = [], heldTimeLimit = 1, textOverlay = "", textOverlayFontPath = None, toolTip = "", toolTipEnabled = False):
         self.image = image
         if self.image != None and type(self.image) == str:
             self.image = pg.image.load(self.image)
@@ -20,6 +87,12 @@ class Button:
         else:
             self.rect = pg.Rect(pos, (80, 80))
 
+        self.textOverlayImage = None
+        self.textOverlay = textOverlay
+        if self.textOverlay != "":
+            self.font = pg.font.Font(textOverlayFontPath, 36)
+            self.textOverlayImage = gameTextImage(self.textOverlay, self.rect.topleft, self.font, self.rect.width, self.rect.height)
+        
         self.hidden = False
         self.font = pg.font.Font(None, 36)
         self.functions = []
@@ -46,6 +119,7 @@ class Button:
         self.rotation = 0
         self.StoredRotation = 0
         self.scale = 1
+        self.opacity = 255
         self.children = []
         self.toDestroy = []
 
@@ -55,6 +129,28 @@ class Button:
         self.rightClickFunctionArgs = []
         for i in range(len(RightClickFunctionArgs)):
             self.rightClickFunctionArgs.append(RightClickFunctionArgs[i])
+
+        self.toolTip = toolTip
+        self.toolTipImage = None
+        self.toolTipBackground = None
+        self.toolTipEnabled = toolTipEnabled
+        if toolTip != "":
+            self.toolTipBackground = Button(None, (0, 0))
+            poition = (self.rect.centerx, self.rect.top - 10)
+            self.toolTipBackground.positionByBottomMiddle(poition)   #Just temporary, we'll adjust the position later
+            self.toolTipBackground.hide()
+            self.toolTipImage = gameTextImage(toolTip, (0, 0), textOverlayFontPath, 300, 100)
+            self.toolTipImage.positionByTopMiddle(poition)
+            self.toolTipImage.hide()
+        else:
+            self.toolTipEnabled = False
+
+        self.hoverTime = 0
+        self.maxHoverTime = 120
+        self.hoverPos = (0, 0)
+        self.hoverPosForgiveness = 0 #in case the mouse moves a little bit, we don't want to instantly hide the tooltip
+
+
 
 
 
@@ -96,16 +192,21 @@ class Button:
 
 
     def addChild(self, child):
-        child.parent = self
-        self.children.append(child)
+        child.setParent(self)
         
 
 
-
+    #TODO: Preserve the original rect, so that we can recalculate the center and edges with the scale.
+    #We'll just do what we did for gameTextImage, and use a temporary surface and rect to draw with the new scale
     def draw(self, screen):
         if not self.hidden and not self.destroyed: #if the object is destroyed, don't draw it, only draw its children, because we assume we're trying to clean them up
+            tempRect = copy.deepcopy(self.rect)
             if self.image == None:
-                pg.draw.rect(screen, (255, 255, 255), self.rect)
+                # pg.draw.rect(screen, (255, 255, 255), self.rect)
+                #Now with OPACITY
+                s = pg.Surface((self.rect.width, self.rect.height), pg.SRCALPHA)
+                s.fill((255, 255, 255, self.opacity))
+                screen.blit(s, self.rect)
                 #Handle the rotation
                 if self.StoredRotation != self.rotation:
                     #Assume we rotate around the center of the image
@@ -123,18 +224,17 @@ class Button:
                     self.image = pg.transform.scale(self.image, (int(self.image.get_width() * self.scale), int(self.image.get_height() * self.scale)))
                     if self.StoredRotation != 0:
                         self.image = pg.transform.rotate(self.image, self.StoredRotation)
-                    self.rect = self.image.get_rect()
-                    self.rect.center = oldCenter
+                    tempRect = self.image.get_rect()
+                    tempRect.center = oldCenter
             else:
-                screen.blit(self.image, self.rect)
                 #Handle the rotation
                 if self.StoredRotation != self.rotation:
                     oldCenter = self.rect.center
                     originalImage = self.BASEIMAGE
                     self.image = originalImage
                     self.image = pg.transform.rotate(self.image, self.rotation)
-                    self.rect = self.image.get_rect()
-                    self.rect.center = oldCenter
+                    tempRect = self.image.get_rect()
+                    tempRect.center = oldCenter
                     self.StoredRotation = self.rotation
                 if self.scale != 1:
                     oldCenter = self.rect.center
@@ -143,8 +243,17 @@ class Button:
                     self.image = pg.transform.scale(self.image, (int(self.image.get_width() * self.scale), int(self.image.get_height() * self.scale)))
                     if self.StoredRotation != 0:
                         self.image = pg.transform.rotate(self.image, self.StoredRotation)
-                    self.rect = self.image.get_rect()
-                    self.rect.center = oldCenter
+                    tempRect = self.image.get_rect()
+                    tempRect.center = oldCenter
+                #opacity
+                s = pg.Surface((tempRect.width, tempRect.height), pg.SRCALPHA)
+                s.blit(self.image, (0, 0))
+                s.set_alpha(self.opacity)
+                screen.blit(s, tempRect)
+
+            if self.toolTipEnabled:
+                self.toolTipBackground.draw(screen)
+                self.toolTipImage.draw(screen)
 
         if self.children != []:
             for child in self.children:
@@ -171,6 +280,23 @@ class Button:
                 self.heldTime = 0
                 self.held = False
                 self.onClickAndHold()
+        if self.toolTipEnabled:
+            self.toolTipBackground.update()
+            self.toolTipImage.update()
+            if pg.mouse.get_pos() != self.hoverPos:
+                self.hoverTime = 0
+                if self.toolTipBackground.hidden == False:
+                    self.toolTipBackground.hide()
+                    self.toolTipImage.hide()
+            #if the mouse is hovering over the button, increase the hover time
+            if self.rect.collidepoint(pg.mouse.get_pos()):
+                self.hoverPos = pg.mouse.get_pos()
+            if pg.mouse.get_pos() == self.hoverPos and self.hoverTime < self.maxHoverTime and self.rect.collidepoint(pg.mouse.get_pos()):
+                self.hoverTime += 1
+            if self.hoverTime >= self.maxHoverTime and self.rect.collidepoint(pg.mouse.get_pos()):
+                self.toolTipBackground.show()
+                self.toolTipImage.show()
+            
         if self.children != []:
             for child in self.children:
                 if child.destroyed:
@@ -191,7 +317,9 @@ class Button:
         self.rect.centerx = pos[0]
 
     def getTopMiddle(self):
-        return (self.rect.centerx, self.rect.top)
+        x = self.rect.centerx
+        y = self.rect.centery - self.rect.height * self.scale / 2
+        return (x, y)
     
     def positionByBottomMiddle(self, pos):
         self.rect.bottom = pos[1]
@@ -206,6 +334,8 @@ class Button:
     def getCenter(self):
         return self.rect.center
     
+
+
     def addOnClickFunction(self, function, args = []):
         self.functions.append(function)
         self.FunctionArgs.append(args)
@@ -217,6 +347,12 @@ class Button:
     def addOnHoldFunction(self, function, args = []):
         self.heldFunctions.append(function)
         self.heldFunctionArgs.append(args)
+    
+    def setOpacity(self, opacity):
+        self.opacity = opacity
+        
+    def getOpacity(self):
+        return self.opacity
     
 
     def handleInput(self, event):
@@ -289,6 +425,10 @@ class Button:
                     self.rightClickFunctions[i](*arguments)
                 else:
                     self.rightClickFunctions[i]()
+    
+    def onHover(self):
+        if self.toolTipEnabled:
+            self.toolTip.show()
 
     def getWidth(self):
         return self.rect.width
@@ -307,33 +447,50 @@ class Button:
         # self.image = self.font.render(self.text, True, (255, 0, 0))
 
 class gameTextImage():
-    def __init__(self, text, pos, font, width = 0, height = 0):
+    def __init__(self, text, pos, font, width = 0, height = 0, fontSize = 36, centerText = True):
         self.text = text
-        self.font = font
-        self.image = self.font.render(self.text, True, (255, 255, 255))
-        if width == 0 and height == 0:
-            self.rect = self.image.get_rect()
-        else:
-            if height == 0:
-                aspectRatio = self.image.get_width() / self.image.get_height()
-                self.rect = pg.Rect(pos, (width, int(width / aspectRatio)))
+        self.font = pg.font.Font(font, fontSize)
+        self.surface = pg.Surface((1, 1), pg.SRCALPHA)
+        #Handling new lines by creating a new surface for each line
+        lines = text.split("\n")
+        self.images = []
+        self.rects = []
+        for line in lines:
+            self.images.append(self.font.render(line, True, (255, 255, 255)))
+            self.rects.append(self.images[-1].get_rect())
+        self.pos = pos
+        maxW = 0
+        totalH = 0
+        self.centerText = centerText
+        for i in range(len(self.images)):
+            if self.images[i].get_width() > maxW:
+                maxW = self.images[i].get_width()
+            totalH += self.images[i].get_height()
+        self.surface = pg.Surface((maxW, totalH), pg.SRCALPHA)
 
-            else:
-                self.rect = pg.Rect(pos, (width, height))
-        #Resize the image to fit the rect
-        self.image = pg.transform.scale(self.image, (self.rect.width, self.rect.height))
+        self.rect = self.surface.get_rect()
+        self.scale = 1
         
         self.rect.topleft = pos
         self.hidden = False
         self.destroyed = False
+        self.opacity = 255
+        self.parent = None
+        self.parentPos = [0, 0]
+        self.parentOffset = [0, 0] 
+        self.parentRotation = 0 
+        self.parentScale = 1
+        self.scaleLastFrame = 1
 
 
     def destroy(self):
         self.destroyed = True
 
     def positionByTopMiddle(self, pos):
+        #updated for scaling
         self.rect.top = pos[1]
         self.rect.centerx = pos[0]
+
 
     def getTopMiddle(self):
         return (self.rect.centerx, self.rect.top)
@@ -357,17 +514,104 @@ class gameTextImage():
     def getWidth(self):
         return self.rect.width
     
+    def setParent(self, parent):
+        self.parent = parent
+        if self.parent != None:
+            self.parentPos = parent.getCenter()
+            self.parentOffset = [self.rect.center[0] - self.parentPos[0], self.rect.center[1] - self.parentPos[1]]
+            self.parentOffset = [self.parentOffset[0] / self.parent.scale, self.parentOffset[1] / self.parent.scale] #Adjust the offset based on the parent's scale
+            self.parentRotation = parent.rotation
+            self.parentScale = parent.scale
+            self.parent.children.append(self)
+            self.scaleLastFrame = self.parent.scale
+    
     def draw(self, screen):
         if not self.hidden:
-            screen.blit(self.image, self.rect)
+            #transparency
+            # s = pg.Surface((self.rect.width, self.rect.height), pg.SRCALPHA)
+            # s.blit(self.image, (0, 0))
+            # s.set_alpha(self.opacity)
+            # screen.blit(s, self.rect)
+            tempRect = copy.deepcopy(self.rect)
+            if self.centerText:
+                # Scale the images, keeping the same center point
+                # Make a surface for the text, all at the base scale
+                s = pg.Surface((self.rect.width, self.rect.height), pg.SRCALPHA)
+                #self.surface = pg.Surface((self.rect.width, self.rect.height), pg.SRCALPHA)
+                if self.images:
+                    for i in range(len(self.images)):
+                        s.blit(self.images[i], (self.rect.width // 2 - self.rects[i].width // 2, self.rects[i].height * i))
+                    s.set_alpha(self.opacity)
+
+                # Scale the surface
+                oldCenter = self.rect.center
+                s = pg.transform.scale(s, (int(s.get_width() * self.scale), int(s.get_height() * self.scale)))
+                rect = s.get_rect()
+                rect.center = oldCenter
+                screen.blit(s, rect)
+            else:
+                for i in range(len(self.images)):
+                    self.surface.blit(self.images[i], (0, self.rects[i].height * i))
+                self.surface.set_alpha(self.opacity)
+                screen.blit(self.surface, self.rect)
+
+
+            
 
     def updateText(self, text):
+        position = self.rect.center
         self.text = text
-        self.image = self.font.render(self.text, True, (255, 255, 255))
-        self.image = pg.transform.scale(self.image, (self.rect.width, self.rect.height))
+        self.images = []
+        self.rects = []
+        lines = text.split("\n")
+        for line in lines:
+            self.images.append(self.font.render(line, True, (255, 255, 255)))
+            self.rects.append(self.images[-1].get_rect())
+        maxW = 0
+        totalH = 0
+        for i in range(len(self.images)):
+            if self.images[i].get_width() > maxW:
+                maxW = self.images[i].get_width()
+            totalH += self.images[i].get_height()
+        self.surface = pg.Surface((maxW, totalH), pg.SRCALPHA)
+        self.rect = self.surface.get_rect()
+        self.rect.center = position
+
 
     def update(self):
-        pass
+        if self.parent is not None:
+            # Update the position based on the parent's position, rotation, and scale
+            self.pos = [self.parentPos[0] + self.parentOffset[0], self.parentPos[1] + self.parentOffset[1]]
+            self.parentRotation = self.parent.rotation
+            self.parentScale = self.parent.scale
+            self.pos = self.rotatePoint(self.pos, self.parentPos, self.parentRotation)
+            self.pos = self.scalePoint()
+
+            #update internal scale, so we can adjust the text size based on the parent's scale
+            if self.scaleLastFrame != self.parent.scale:
+                self.scale += (self.parent.scale - self.scaleLastFrame) #Adjust the scale based on the difference between the last frame's scale and the current scale
+                self.scaleLastFrame = self.parent.scale
+
+            self.pos = [round(self.pos[0]), round(self.pos[1])]
+            self.opacity = self.parent.getOpacity()
+            self.rect.center = self.pos
+
+    def rotatePoint(self, point, center, angle):
+        angle = math.radians(-angle)
+        x = point[0] - center[0]
+        y = point[1] - center[1]
+        x1 = x * math.cos(angle) - y * math.sin(angle)
+        y1 = x * math.sin(angle) + y * math.cos(angle)
+        return [x1 + center[0], y1 + center[1]]
+    
+    #Adjusts the position and scale based on the center of the parent and the new scale
+    def scalePoint(self):
+        x = self.parent.getCenter()[0] + self.parentOffset[0] * self.parent.scale
+        y = self.parent.getCenter()[1] + self.parentOffset[1] * self.parent.scale
+        return [x, y]
+
+
+
 
     def handleInput(self, event):
         pass
@@ -377,6 +621,12 @@ class gameTextImage():
 
     def show(self):
         self.hidden = False
+
+    def setOpacity(self, opacity):
+        self.opacity = opacity
+
+    def getOpacity(self):
+        return self.opacity
 
 class BasicParticle():
     def __init__(self, pos, color, size, speed, maxSpeed, direction, life, hasGravity = False, gravity = 0.1, fadeOutTime = 0, drag = 0.1):
@@ -542,12 +792,17 @@ class Animator():
         #Fairly certain this wont work for multiple animations, but I'm not sure
         self.index = 0
         self.done = True
-        self.onAnimationEnd = None
         self.animationEndArgs = []
+        self.animationEndFuncs = []
+        
 
     def destroy(self):
         self.destroyed = True
         return True
+    
+    def setParent(self, parent):
+        self.parent = parent
+        parent.children.append(self)
 
     def lerpScaleTo(self, scale, time):
         self.animations.append([self.lerpScale, [scale, self.index]])
@@ -747,21 +1002,56 @@ class Animator():
             self.times.remove(self.times[timeIndex])
             self.index -= 1
 
+    #Not sure if this will work, but it's worth a shot
+    def flatten_outer(self, lst):
+        """Helper function to flatten only the outermost list."""
+        flattened = []
+        for item in lst:
+            if isinstance(item, list) and not all(isinstance(i, list) for i in item):
+                flattened.extend(item)
+            else:
+                flattened.append(item)
+        return flattened
+
+
     def update(self):
         for animation in self.animations:
             animation[0](*animation[1])
 
         if len(self.animations) == 0:
-            if self.onAnimationEnd != None:
-                self.onAnimationEnd(*self.animationEndArgs)
-            else:
-                self.destroyed = True
+            for i in range(len(self.animationEndFuncs)):
+                if len(self.animationEndArgs[i]) > 0:
+                    self.animationEndFuncs[i](*self.animationEndArgs[i])
+                else:
+                    self.animationEndFuncs[i]()
+            self.destroyed = True
 
+    def lerpOpacityTo(self, opacity, time):
+        self.animations.append([self.lerpOpacity, [opacity, self.index]])
+        self.times.append((time, time))
+
+    def lerpOpacity(self, opacity, timeIndex):
+        start = self.parent.getOpacity()
+        diff = opacity - start
+        step = diff / self.times[timeIndex][0]
+        start += step
+        self.parent.setOpacity(int(start))
+        self.times[timeIndex] = (self.times[timeIndex][0] - 1, self.times[timeIndex][1])
+        if self.times[timeIndex][0] <= 0:
+            self.animations.remove(self.animations[timeIndex])
+            self.times.remove(self.times[timeIndex])
+            self.index -= 1
 
 
     def setOnAnimationEnd(self, function, args = []):
-        self.onAnimationEnd = function
-        self.animationEndArgs = args
+        self.animationEndFuncs = [function]
+        self.animationEndArgs = [args]
+    
+    def addOnAnimationEnd(self, function, args = []):
+        self.animationEndFuncs.append(function)
+        self.animationEndArgs.append(args)
+        
+
 
     def draw(self, screen):
         pass
@@ -770,7 +1060,7 @@ class Animator():
         pass
 
 class TextBox():
-    def __init__(self, x, y, width, height, text, color, textColor, font):
+    def __init__(self, x, y, width, height, text, color, textColor, font, fontSize = 36):
         self.x = x
         self.y = y
         self.width = width
@@ -779,6 +1069,7 @@ class TextBox():
         self.color = color
         self.textColor = textColor
         self.font = font
+        self.fontRenderer = pg.font.Font(font, fontSize)
         self.focused = True
         self.hidden = False
         self.exitFunction = None
@@ -803,8 +1094,8 @@ class TextBox():
         pg.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height))
         #We have to render the test as though the cursor is always there, to stop it from moving back and forth
         #text = self.font.render(self.text, True, self.textColor)
-        text = self.font.render(self.text, True, self.textColor)
-        cursor = self.font.render(self.cursor, True, self.textColor)
+        text = self.fontRenderer.render(self.text, True, self.textColor)
+        cursor = self.fontRenderer.render(self.cursor, True, self.textColor)
         textRect = text.get_rect()
         cursorRect = cursor.get_rect()
         
